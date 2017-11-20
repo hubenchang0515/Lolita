@@ -2,6 +2,7 @@
 Lolita is a Computer Vision library of C++
 
 ## Warning
+* Need C++11
 * Doesn't Ready
 
 ## Demo
