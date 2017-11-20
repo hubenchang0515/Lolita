@@ -132,7 +132,7 @@ static void readRgb16(Mat& mat, FILE* fp, uint32_t offset, uint32_t w, uint32_t 
 
         /* byets of line should be multiple of 4 , otherwise filled by 0 */
         /* skip these data */
-        size_t skip = (w * 2 + 3)/4 * 4 - w * 3;
+        size_t skip = (w * 2 + 3)/4 * 4 - w * 2;
         fseek(fp, skip, SEEK_CUR);
     }
 }
@@ -158,7 +158,7 @@ static void readPalette8(Mat& mat, FILE* fp, uint32_t offset, uint32_t w, uint32
 
         /* byets of line should be multiple of 4 , otherwise filled by 0 */
         /* skip these data */
-        size_t skip = (w + 3)/4 * 4 - w * 3;
+        size_t skip = (w + 3)/4 * 4 - w;
         fseek(fp, skip, SEEK_CUR);
     }
 }
@@ -171,7 +171,8 @@ static void readPalette4(Mat& mat, FILE* fp, uint32_t offset, uint32_t w, uint32
     BGRPalette color;
     for(uint32_t i = 0; i < h; i++)
     {
-        for(uint32_t j = 0; j < w; j+=2) 
+        uint32_t j = 0;
+        for(; j < w; j+=2) 
         {
             fseek(fp, offset + i * w + j, SEEK_SET);
             index = fgetc(fp);
@@ -190,7 +191,7 @@ static void readPalette4(Mat& mat, FILE* fp, uint32_t offset, uint32_t w, uint32
 
         /* byets of line should be multiple of 4 , otherwise filled by 0 */
         /* skip these data */
-        size_t skip = (w / 2 + 3)/4 * 4 - w * 3;
+        size_t skip = (j / 2 + 3)/4 * 4 - j/2;
         fseek(fp, skip, SEEK_CUR);
     }
 }
@@ -203,7 +204,8 @@ static void readPalette1(Mat& mat, FILE* fp, uint32_t offset, uint32_t w, uint32
     BGRPalette color;
     for(uint32_t i = 0; i < h; i++)
     {
-        for(uint32_t j = 0; j < w; j+=8) 
+        uint32_t j = 0;
+        for(; j < w; j+=8) 
         {
             fseek(fp, offset + i * w + j, SEEK_SET);
             index = fgetc(fp);
@@ -219,7 +221,7 @@ static void readPalette1(Mat& mat, FILE* fp, uint32_t offset, uint32_t w, uint32
 
         /* byets of line should be multiple of 4 , otherwise filled by 0 */
         /* skip these data */
-        size_t skip = (w / 8 + 3)/4 * 4 - w * 3;
+        size_t skip = (j / 8 + 3)/4 * 4 - j/8;
         fseek(fp, skip, SEEK_CUR);
     }
 }
