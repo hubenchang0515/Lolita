@@ -33,59 +33,62 @@ typedef struct BGRPalette
     uint8_t rgbReserved;
 }BGRPalette; 
 
-static void BMP_ReadFileHeader(FILE *bmpfile,BitMapFileHeader& buf) 
+
+static bool BMP_ReadFileHeader(FILE *bmpfile,BitMapFileHeader& buf) 
 { 
-    fseek(bmpfile,0,SEEK_SET); 
-   
-    fread(buf.bfType,2,1,bmpfile); 
-    fread(&buf.bfSize,4,1,bmpfile); 
-    fread(&buf.bfReserved1,2,1,bmpfile); 
-    fread(&buf.bfReserved2,2,1,bmpfile); 
-    fread(&buf.bfOffBits,4,1,bmpfile); 
+	return
+	fseek(bmpfile,0,SEEK_SET) == 0 &&
+	fread(buf.bfType,2,1,bmpfile) == 1 &&
+	fread(&buf.bfSize,4,1,bmpfile) == 1 &&
+	fread(&buf.bfReserved1,2,1,bmpfile) == 1 &&
+	fread(&buf.bfReserved2,2,1,bmpfile) == 1 &&
+	fread(&buf.bfOffBits,4,1,bmpfile) == 1;
 } 
   
-static void BMP_ReadInfoHeader(FILE *bmpfile,BitMapInfoHeader& buf) 
+static bool BMP_ReadInfoHeader(FILE *bmpfile,BitMapInfoHeader& buf) 
 { 
-    fseek(bmpfile,14,SEEK_SET);
-    fread(&buf.biSize,4,1,bmpfile); 
-    fread(&buf.biWidth,4,1,bmpfile); 
-    fread(&buf.biHeight,4,1,bmpfile); 
-    fread(&buf.biPlanes,2,1,bmpfile); 
-    fread(&buf.biBitCount,2,1,bmpfile); 
-    fread(&buf.biCompression,4,1,bmpfile); 
-    fread(&buf.biSizeImage,4,1,bmpfile); 
-    fread(&buf.biXPelsPerMeter,4,1,bmpfile); 
-    fread(&buf.biYPelsPerMeter,4,1,bmpfile); 
-    fread(&buf.biClrUsed,4,1,bmpfile); 
-    fread(&buf.biClrImportant,4,1,bmpfile); 
+	return 
+	fseek(bmpfile,14,SEEK_SET) == 0 &&
+	fread(&buf.biSize,4,1,bmpfile) == 1 &&
+	fread(&buf.biWidth,4,1,bmpfile) == 1 &&
+	fread(&buf.biHeight,4,1,bmpfile) == 1 &&
+	fread(&buf.biPlanes,2,1,bmpfile) == 1 &&
+	fread(&buf.biBitCount,2,1,bmpfile) == 1 &&
+	fread(&buf.biCompression,4,1,bmpfile) == 1 &&
+	fread(&buf.biSizeImage,4,1,bmpfile) == 1 &&
+	fread(&buf.biXPelsPerMeter,4,1,bmpfile) == 1 &&
+	fread(&buf.biYPelsPerMeter,4,1,bmpfile) == 1 &&
+	fread(&buf.biClrUsed,4,1,bmpfile) == 1 &&
+	fread(&buf.biClrImportant,4,1,bmpfile) == 1;
 } 
   
 
-static void BMP_WriteFileHeader(FILE *bmpfile,BitMapFileHeader& buf) 
+static bool BMP_WriteFileHeader(FILE *bmpfile,BitMapFileHeader& buf) 
 { 
-    fseek(bmpfile,0,SEEK_SET); 
-    fwrite(buf.bfType,2,1,bmpfile); 
-    fwrite(&buf.bfSize,4,1,bmpfile); 
-    fwrite(&buf.bfReserved1,2,1,bmpfile); 
-    fwrite(&buf.bfReserved2,2,1,bmpfile); 
-    fwrite(&buf.bfOffBits,4,1,bmpfile); 
+	return 
+	fseek(bmpfile,0,SEEK_SET) == 0 &&
+	fwrite(buf.bfType,2,1,bmpfile) == 1 &&
+	fwrite(&buf.bfSize,4,1,bmpfile) == 1 &&
+	fwrite(&buf.bfReserved1,2,1,bmpfile) == 1 &&
+	fwrite(&buf.bfReserved2,2,1,bmpfile) == 1 &&
+	fwrite(&buf.bfOffBits,4,1,bmpfile) == 1;
 } 
   
-static void BMP_WriteInfoHeader(FILE *bmpfile,BitMapInfoHeader& buf) 
-{ 
-  
-    fseek(bmpfile,14,SEEK_SET); 
-    fwrite(&buf.biSize,4,1,bmpfile); 
-    fwrite(&buf.biWidth,4,1,bmpfile); 
-    fwrite(&buf.biHeight,4,1,bmpfile); 
-    fwrite(&buf.biPlanes,2,1,bmpfile); 
-    fwrite(&buf.biBitCount,2,1,bmpfile); 
-    fwrite(&buf.biCompression,4,1,bmpfile); 
-    fwrite(&buf.biSizeImage,4,1,bmpfile); 
-    fwrite(&buf.biXPelsPerMeter,4,1,bmpfile); 
-    fwrite(&buf.biYPelsPerMeter,4,1,bmpfile); 
-    fwrite(&buf.biClrUsed,4,1,bmpfile); 
-    fwrite(&buf.biClrImportant,4,1,bmpfile); 
+static bool BMP_WriteInfoHeader(FILE *bmpfile,BitMapInfoHeader& buf) 
+{
+	return 
+	fseek(bmpfile,14,SEEK_SET) == 0 &&
+	fwrite(&buf.biSize,4,1,bmpfile) == 1 &&
+	fwrite(&buf.biWidth,4,1,bmpfile) == 1 &&
+	fwrite(&buf.biHeight,4,1,bmpfile) == 1 &&
+	fwrite(&buf.biPlanes,2,1,bmpfile) == 1 &&
+	fwrite(&buf.biBitCount,2,1,bmpfile) == 1 &&
+	fwrite(&buf.biCompression,4,1,bmpfile) == 1 &&
+	fwrite(&buf.biSizeImage,4,1,bmpfile) == 1 &&
+	fwrite(&buf.biXPelsPerMeter,4,1,bmpfile) == 1 &&
+	fwrite(&buf.biYPelsPerMeter,4,1,bmpfile) == 1 &&
+	fwrite(&buf.biClrUsed,4,1,bmpfile) == 1 &&
+	fwrite(&buf.biClrImportant,4,1,bmpfile) == 1;
 }  
 
 
@@ -94,10 +97,13 @@ namespace lolita
 {
 
 /* 24bit color BGR888 */
-static void readBgr24(Mat& mat, FILE* fp, uint32_t offset, uint32_t w, uint32_t h)
+static bool readBgr24(Mat& mat, FILE* fp, uint32_t offset, uint32_t w, uint32_t h)
 {
     mat.resize(w,h);
-    fseek(fp, offset, SEEK_SET);
+    if(fseek(fp, offset, SEEK_SET) != 0)
+    {
+        return false;
+    }
     for(uint32_t i = 0; i < h; i++)
     {
         for(uint32_t j = 0; j < w; j++) 
@@ -110,21 +116,32 @@ static void readBgr24(Mat& mat, FILE* fp, uint32_t offset, uint32_t w, uint32_t 
         /* byets of line should be multiple of 4 , otherwise filled by 0 */
         /* skip these data */
         size_t skip = (w * 3 + 3)/4 * 4 - w * 3;
-        fseek(fp, skip, SEEK_CUR);
+        if(fseek(fp, skip, SEEK_CUR) != 0)
+        {
+            return false;
+        }
     }
+
+    return true;
 }
 
 /* 16bit color RGB565 */
-static void readRgb16(Mat& mat, FILE* fp, uint32_t offset, uint32_t w, uint32_t h)
+static bool readRgb16(Mat& mat, FILE* fp, uint32_t offset, uint32_t w, uint32_t h)
 {
     mat.resize(w,h);
     uint16_t color = 0;
-    fseek(fp, offset, SEEK_SET);
+    if(fseek(fp, offset, SEEK_SET) != 0)
+    {
+        return false;
+    }
     for(uint32_t i = 0; i < h; i++)
     {
         for(uint32_t j = 0; j < w; j++) 
         {
-            fread(&color, 2, 1, fp);
+            if(fread(&color, 2, 1, fp) != 1)
+            {
+            	return false;
+            }
             mat[h-i-1][j].red  = ((color & 0xf800) >> 11) << 3;
             mat[h-i-1][j].green = ((color & 0x07e0) >> 5) << 2;
             mat[h-i-1][j].blue   =  (color & 0x001f) << 3;
@@ -133,12 +150,17 @@ static void readRgb16(Mat& mat, FILE* fp, uint32_t offset, uint32_t w, uint32_t 
         /* byets of line should be multiple of 4 , otherwise filled by 0 */
         /* skip these data */
         size_t skip = (w * 2 + 3)/4 * 4 - w * 2;
-        fseek(fp, skip, SEEK_CUR);
+        if(fseek(fp, skip, SEEK_CUR) != 0)
+        {
+        	return false;
+        }
     }
+
+    return true;
 }
 
 /* 8bit color , 256 palettes */
-static void readPalette8(Mat& mat, FILE* fp, uint32_t offset, uint32_t w, uint32_t h)
+static bool readPalette8(Mat& mat, FILE* fp, uint32_t offset, uint32_t w, uint32_t h)
 {
     mat.resize(w,h);
     uint8_t index = 0;
@@ -147,10 +169,16 @@ static void readPalette8(Mat& mat, FILE* fp, uint32_t offset, uint32_t w, uint32
     {
         for(uint32_t j = 0; j < w; j++) 
         {
-            fseek(fp, offset + i * w + j, SEEK_SET);
+            if(fseek(fp, offset + i * w + j, SEEK_SET) != 0)
+            {
+            	return false;
+            }
             index = fgetc(fp);
-            fseek(fp, 14 + 40 + 4 * index, SEEK_SET);
-            fread(&color, 4, 1, fp);
+            if(fseek(fp, 14 + 40 + 4 * index, SEEK_SET) != 0 ||
+                fread(&color, 4, 1, fp) != 1)
+            {
+                return false;
+            }
             mat[h-i-1][j].red = color.red;
             mat[h-i-1][j].green = color.green;
             mat[h-i-1][j].blue = color.blue;
@@ -159,12 +187,17 @@ static void readPalette8(Mat& mat, FILE* fp, uint32_t offset, uint32_t w, uint32
         /* byets of line should be multiple of 4 , otherwise filled by 0 */
         /* skip these data */
         size_t skip = (w + 3)/4 * 4 - w;
-        fseek(fp, skip, SEEK_CUR);
+        if(fseek(fp, skip, SEEK_CUR) != 0)
+        {
+            return false;
+        }
     }
+
+    return true;
 }
 
 /* 4bit color , 16 palettes */
-static void readPalette4(Mat& mat, FILE* fp, uint32_t offset, uint32_t w, uint32_t h)
+static bool readPalette4(Mat& mat, FILE* fp, uint32_t offset, uint32_t w, uint32_t h)
 {
     mat.resize(w,h);
     uint8_t index = 0;
@@ -174,16 +207,25 @@ static void readPalette4(Mat& mat, FILE* fp, uint32_t offset, uint32_t w, uint32
         uint32_t j = 0;
         for(; j < w; j+=2) 
         {
-            fseek(fp, offset + i * w + j, SEEK_SET);
+            if(fseek(fp, offset + i * w + j, SEEK_SET) != 0)
+            {
+                return false;
+            }
             index = fgetc(fp);
-            fseek(fp, 14 + 40 + 4 * ((index & 0xf0) >> 4), SEEK_SET);
-            fread(&color, 4, 1, fp);
+            if(fseek(fp, 14 + 40 + 4 * ((index & 0xf0) >> 4), SEEK_SET) != 0 ||
+                fread(&color, 4, 1, fp) != 1)
+            {
+                return false;
+            }
             mat[h-i-1][j].red = color.red;
             mat[h-i-1][j].green = color.green;
             mat[h-i-1][j].blue = color.blue;
 
-            fseek(fp, 14 + 40 + 4 * (index & 0x0f), SEEK_SET);
-            fread(&color, 4, 1, fp);
+            if(fseek(fp, 14 + 40 + 4 * (index & 0x0f), SEEK_SET) != 0 ||
+                fread(&color, 4, 1, fp) != 1)
+            {
+                return false;
+            }
             mat[h-i-1][j+1].red = color.red;
             mat[h-i-1][j+1].green = color.green;
             mat[h-i-1][j+1].blue = color.blue;
@@ -192,12 +234,17 @@ static void readPalette4(Mat& mat, FILE* fp, uint32_t offset, uint32_t w, uint32
         /* byets of line should be multiple of 4 , otherwise filled by 0 */
         /* skip these data */
         size_t skip = (j / 2 + 3)/4 * 4 - j/2;
-        fseek(fp, skip, SEEK_CUR);
+        if(fseek(fp, skip, SEEK_CUR) != 0)
+        {
+            return false;
+        }
     }
+
+    return true;
 }
 
 /* 1bit color , 2 palettes */
-static void readPalette1(Mat& mat, FILE* fp, uint32_t offset, uint32_t w, uint32_t h)
+static bool readPalette1(Mat& mat, FILE* fp, uint32_t offset, uint32_t w, uint32_t h)
 {
     mat.resize(w,h);
     uint8_t index = 0;
@@ -207,12 +254,18 @@ static void readPalette1(Mat& mat, FILE* fp, uint32_t offset, uint32_t w, uint32
         uint32_t j = 0;
         for(; j < w; j+=8) 
         {
-            fseek(fp, offset + i * w + j, SEEK_SET);
+            if(fseek(fp, offset + i * w + j, SEEK_SET) != 0)
+            {
+                return false;
+            }
             index = fgetc(fp);
             for(uint8_t k = 0; k < 8; k++)
             {
-                fseek(fp, 14 + 40 + 4 * ((index >> k)  & 0x01), SEEK_SET);
-                fread(&color, 4, 1, fp);
+                if(fseek(fp, 14 + 40 + 4 * ((index >> k)  & 0x01), SEEK_SET) != 0 ||
+                    fread(&color, 4, 1, fp) != 1)
+                {
+                    return false;
+                }
                 mat[h-i-1][j+7-k].red = color.red;
                 mat[h-i-1][j+7-k].green = color.green;
                 mat[h-i-1][j+7-k].blue = color.blue;
@@ -222,8 +275,13 @@ static void readPalette1(Mat& mat, FILE* fp, uint32_t offset, uint32_t w, uint32
         /* byets of line should be multiple of 4 , otherwise filled by 0 */
         /* skip these data */
         size_t skip = (j / 8 + 3)/4 * 4 - j/8;
-        fseek(fp, skip, SEEK_CUR);
+        if(fseek(fp, skip, SEEK_CUR) != 0)
+        {
+            return false;
+        }
     }
+
+    return true;
 }
 
 
@@ -238,39 +296,39 @@ bool Bmp::read(Mat& mat, std::string file)
 
     BitMapFileHeader fileHeader;
     BitMapInfoHeader infoHeader;
-    BMP_ReadFileHeader(fp, fileHeader);
-    BMP_ReadInfoHeader(fp, infoHeader);
+
+    if(!BMP_ReadFileHeader(fp, fileHeader) || !BMP_ReadInfoHeader(fp, infoHeader))
+    {
+        return false;
+    }
 
     mat.resize(infoHeader.biWidth, infoHeader.biHeight);
-     
+
+    bool rval = false;
     switch(infoHeader.biBitCount)
     {
     case 24:
-        readBgr24(mat, fp, fileHeader.bfOffBits, infoHeader.biWidth, infoHeader.biHeight);
+        rval = readBgr24(mat, fp, fileHeader.bfOffBits, infoHeader.biWidth, infoHeader.biHeight);
         break;
 
     case 16:
-        readRgb16(mat, fp, fileHeader.bfOffBits, infoHeader.biWidth, infoHeader.biHeight);
+        rval = readRgb16(mat, fp, fileHeader.bfOffBits, infoHeader.biWidth, infoHeader.biHeight);
         break;
 
     case 8:
-        readPalette8(mat, fp, fileHeader.bfOffBits, infoHeader.biWidth, infoHeader.biHeight);
+        rval = readPalette8(mat, fp, fileHeader.bfOffBits, infoHeader.biWidth, infoHeader.biHeight);
         break;
 
     case 4:
-        readPalette4(mat, fp, fileHeader.bfOffBits, infoHeader.biWidth, infoHeader.biHeight);
+        rval = readPalette4(mat, fp, fileHeader.bfOffBits, infoHeader.biWidth, infoHeader.biHeight);
         break;
 
     case 1:
-        readPalette1(mat, fp, fileHeader.bfOffBits, infoHeader.biWidth, infoHeader.biHeight);
+        rval = readPalette1(mat, fp, fileHeader.bfOffBits, infoHeader.biWidth, infoHeader.biHeight);
         break;
-
-    default:
-        fclose(fp);
-        return false;
     }
     fclose(fp);
-    return true;
+    return rval;
 }
 
 
@@ -308,8 +366,10 @@ bool Bmp::write(Mat& mat, std::string file)
     
 
 
-    BMP_WriteFileHeader(fp, fileHeader);
-    BMP_WriteInfoHeader(fp, infoHeader);
+    if(!BMP_WriteFileHeader(fp, fileHeader) || !BMP_WriteInfoHeader(fp, infoHeader))
+    {
+        return false;
+    }
 
     for(uint32_t i = 0; i < h; i++)
     {
