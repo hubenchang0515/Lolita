@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 #include <string>
-#include "mat.h"
+#include "mat.hpp"
 
 namespace lolita
 {
@@ -12,8 +12,8 @@ class Bmp
 {
 public:
     static std::string error();
-    static bool read(Mat& mat, std::string file);
-    static bool write(Mat& mat, std::string file);
+    static bool read(Image& mat, std::string file);
+    static bool write(Image& mat, std::string file);
 
 private:
     static std::string errorMessage;

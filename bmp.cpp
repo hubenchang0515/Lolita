@@ -97,7 +97,7 @@ namespace lolita
 {
 
 /* 24bit color BGR888 */
-static bool readBgr24(Mat& mat, FILE* fp, uint32_t offset, uint32_t w, uint32_t h)
+static bool readBgr24(Image& mat, FILE* fp, uint32_t offset, uint32_t w, uint32_t h)
 {
     mat.resize(w,h);
     if(fseek(fp, offset, SEEK_SET) != 0)
@@ -126,7 +126,7 @@ static bool readBgr24(Mat& mat, FILE* fp, uint32_t offset, uint32_t w, uint32_t 
 }
 
 /* 16bit color RGB565 */
-static bool readRgb16(Mat& mat, FILE* fp, uint32_t offset, uint32_t w, uint32_t h)
+static bool readRgb16(Image& mat, FILE* fp, uint32_t offset, uint32_t w, uint32_t h)
 {
     mat.resize(w,h);
     uint16_t color = 0;
@@ -160,7 +160,7 @@ static bool readRgb16(Mat& mat, FILE* fp, uint32_t offset, uint32_t w, uint32_t 
 }
 
 /* 8bit color , 256 palettes */
-static bool readPalette8(Mat& mat, FILE* fp, uint32_t offset, uint32_t w, uint32_t h)
+static bool readPalette8(Image& mat, FILE* fp, uint32_t offset, uint32_t w, uint32_t h)
 {
     mat.resize(w,h);
     uint8_t index = 0;
@@ -197,7 +197,7 @@ static bool readPalette8(Mat& mat, FILE* fp, uint32_t offset, uint32_t w, uint32
 }
 
 /* 4bit color , 16 palettes */
-static bool readPalette4(Mat& mat, FILE* fp, uint32_t offset, uint32_t w, uint32_t h)
+static bool readPalette4(Image& mat, FILE* fp, uint32_t offset, uint32_t w, uint32_t h)
 {
     mat.resize(w,h);
     uint8_t index = 0;
@@ -244,7 +244,7 @@ static bool readPalette4(Mat& mat, FILE* fp, uint32_t offset, uint32_t w, uint32
 }
 
 /* 1bit color , 2 palettes */
-static bool readPalette1(Mat& mat, FILE* fp, uint32_t offset, uint32_t w, uint32_t h)
+static bool readPalette1(Image& mat, FILE* fp, uint32_t offset, uint32_t w, uint32_t h)
 {
     mat.resize(w,h);
     uint8_t index = 0;
@@ -286,7 +286,7 @@ static bool readPalette1(Mat& mat, FILE* fp, uint32_t offset, uint32_t w, uint32
 
 
 
-bool Bmp::read(Mat& mat, std::string file)
+bool Bmp::read(Image& mat, std::string file)
 {
     FILE* fp = fopen(file.c_str(),"rb");
     if(fp == NULL)
@@ -332,7 +332,7 @@ bool Bmp::read(Mat& mat, std::string file)
 }
 
 
-bool Bmp::write(Mat& mat, std::string file)
+bool Bmp::write(Image& mat, std::string file)
 {
     FILE* fp = fopen(file.c_str(),"wb");
     if(fp == NULL)

@@ -2,7 +2,7 @@
 #ifndef LOLITA_TOOLS_H
 #define LOLITA_TOOLS_H
 
-#include "mat.h"
+#include "mat.hpp"
 
 namespace lolita
 {

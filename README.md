@@ -7,43 +7,52 @@ Lolita is a Computer Vision library of C++
 
 ## Demo
 ```C++
-#include <iostream>
-#include "mat.h"
-#include "bmp.h"
+#include <lolita/lolita.h>
 
 using namespace lolita;
 
 int main()
 {
-    Mat mat;
-    Bmp::read(mat,"color.bmp");
-    
-    /* Gray Scale */
-    mat.map([](Pixel& pix)
-    {
-        pix.red = pix.green = pix.blue = (0.30 * pix.red + 0.59 * pix.green + 0.11 * pix.blue);
-    });
-    Bmp::write(mat,"gray.bmp");
-
-    /* Binaryzation */
-    uint64_t sum = mat.reduce<uint64_t>([](Pixel& pix)
-    {
-        return pix.red;
-    });
-    uint8_t average = sum / mat.width()/mat.height();
-    mat.map([average](Pixel& pix)
-    {
-        if(pix.red >= average)
-        {
-            pix.red = pix.green = pix.blue = 0xff;
-        }
-        else
-        {
-            pix.red = pix.green = pix.blue = 0;
-        }
-    });
-    Bmp::write(mat,"bin.bmp");
-
-    return 0; 
+	Image Image;
+	Bmp::read(Image, "color.bmp");
+	Image.map([](Pixel& pix)
+	{
+		pix.red = pix.green  = pix.blue = 0.30 * pix.red + 0.59 * pix.green + 0.11 * pix.blue; 
+	});
+	Bmp::write(Image, "gray.bmp");
+	
+	uint64_t histogram[256] = { 0 };
+	Image.map([&histogram](Pixel& pix)
+	{
+		histogram[pix.red] += 1;
+	});
+	
+	uint16_t summit1st = 0,summit2nd = 0;
+	for(uint16_t i = 0; i < 256; i++)
+	{
+		if(histogram[i] > summit1st)
+		{
+			summit1st = i;
+		}
+		else if(histogram[i] > summit2nd)
+		{
+			summit2nd = i;
+		}
+	}
+	
+	uint8_t threshold = (summit1st + summit2nd) / 2;
+	
+	Image.map([threshold](Pixel& pix)
+	{
+		if(pix.red >= threshold)
+		{
+			pix = 0xffffff;
+		}
+		else
+		{
+			pix = 0;
+		}
+	});
+	Bmp::write(Image, "bin.bmp");
 }
 ```
