@@ -37,6 +37,9 @@ mingw : liblolita.a liblolita.dll
 liblolita.so : pixel.o bmp.o tools.o
 	$(CXX) -shared -o liblolita.so bmp.o pixel.o tools.o
 	
+liblolita.dll : pixel.o bmp.o tools.o
+	$(CXX) -shared -o liblolita.dll bmp.o pixel.o tools.o
+	
 liblolita.a : pixel.o bmp.o tools.o
 	ar rc liblolita.a bmp.o pixel.o tools.o
 	
