@@ -13,7 +13,7 @@ class Bmp
 public:
     static std::string error();
     static bool read(Image& mat, std::string file);
-    static bool write(Image& mat, std::string file);
+    static bool write(Image& mat, std::string file, uint8_t bits=24);
 
 private:
     static std::string errorMessage;

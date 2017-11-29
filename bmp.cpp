@@ -285,54 +285,8 @@ static bool readPalette1(Image& mat, FILE* fp, uint32_t offset, uint32_t w, uint
 }
 
 
-
-bool Bmp::read(Image& mat, std::string file)
-{
-    FILE* fp = fopen(file.c_str(),"rb");
-    if(fp == NULL)
-    {
-        return false;
-    }
-
-    BitMapFileHeader fileHeader;
-    BitMapInfoHeader infoHeader;
-
-    if(!BMP_ReadFileHeader(fp, fileHeader) || !BMP_ReadInfoHeader(fp, infoHeader))
-    {
-        return false;
-    }
-
-    mat.resize(infoHeader.biWidth, infoHeader.biHeight);
-
-    bool rval = false;
-    switch(infoHeader.biBitCount)
-    {
-    case 24:
-        rval = readBgr24(mat, fp, fileHeader.bfOffBits, infoHeader.biWidth, infoHeader.biHeight);
-        break;
-
-    case 16:
-        rval = readRgb16(mat, fp, fileHeader.bfOffBits, infoHeader.biWidth, infoHeader.biHeight);
-        break;
-
-    case 8:
-        rval = readPalette8(mat, fp, fileHeader.bfOffBits, infoHeader.biWidth, infoHeader.biHeight);
-        break;
-
-    case 4:
-        rval = readPalette4(mat, fp, fileHeader.bfOffBits, infoHeader.biWidth, infoHeader.biHeight);
-        break;
-
-    case 1:
-        rval = readPalette1(mat, fp, fileHeader.bfOffBits, infoHeader.biWidth, infoHeader.biHeight);
-        break;
-    }
-    fclose(fp);
-    return rval;
-}
-
-
-bool Bmp::write(Image& mat, std::string file)
+/* 24bit color , BGR888 */
+static bool writeBgr24(Image& mat, std::string file)
 {
     FILE* fp = fopen(file.c_str(),"wb");
     if(fp == NULL)
@@ -375,16 +329,22 @@ bool Bmp::write(Image& mat, std::string file)
     {
         for(uint32_t j = 0; j < w; j++) 
         {
-            fputc(mat[h - i - 1][j].blue , fp);
-            fputc(mat[h - i - 1][j].green , fp);
-            fputc(mat[h - i - 1][j].red , fp);
+            if(EOF == fputc(mat[h - i - 1][j].blue , fp) ||
+                EOF == fputc(mat[h - i - 1][j].green , fp) ||
+                EOF == fputc(mat[h - i - 1][j].red , fp) )
+            {
+                return false;
+            }
         }
 
         /* byets of line should be multiple of 4 , otherwise filled by 0 */
         size_t skip = (w * 3 + 3)/4 * 4 - w * 3;
         while(skip--)
         {
-            fputc(0,fp);
+            if(EOF == fputc(0,fp))
+            {
+                return false;
+            }
         }
     }
 
@@ -392,5 +352,145 @@ bool Bmp::write(Image& mat, std::string file)
     fclose(fp);
     return true;
 }
+
+
+/* 16bit color , BGR565 */
+static bool writeRgb16(Image& mat, std::string file)
+{
+    FILE* fp = fopen(file.c_str(),"wb");
+    if(fp == NULL)
+    {
+        return false;
+    }
+
+    uint32_t w = mat.width();
+    uint32_t h = mat.height(); 
+
+    BitMapFileHeader fileHeader;
+    BitMapInfoHeader infoHeader;
+
+    fileHeader.bfType[0] = 'B'; 
+    fileHeader.bfType[1] = 'M'; 
+    fileHeader.bfReserved1 = 0; 
+    fileHeader.bfReserved2 = 0; 
+    fileHeader.bfOffBits = 14 + 40 + 12;
+    fileHeader.bfSize = 2*w*h + fileHeader.bfOffBits;
+    infoHeader.biSize = 40;
+    infoHeader.biWidth =  w;
+    infoHeader.biHeight = h;
+    infoHeader.biPlanes = 1; 
+    infoHeader.biBitCount = 16;
+    infoHeader.biCompression = 3; 
+    infoHeader.biSizeImage = ((w*2+3)/4*4)*h;
+    infoHeader.biXPelsPerMeter = 3780; 
+    infoHeader.biYPelsPerMeter = 3780; 
+    infoHeader.biClrUsed = 0; 
+    infoHeader.biClrImportant = 0;
+    
+
+
+    if(!BMP_WriteFileHeader(fp, fileHeader) || !BMP_WriteInfoHeader(fp, infoHeader))
+    {
+        return false;
+    }
+
+    uint32_t redMass   = 0xf800;
+    uint32_t greenMass = 0x07e0;
+    uint32_t blueMass  = 0x001f; 
+    if(fwrite(&redMass, 4, 1, fp) != 1 || fwrite(&greenMass, 4, 1, fp) != 1 || fwrite(&blueMass, 4, 1, fp) !=1 )
+    {
+        return false;
+    }
+
+    for(uint32_t i = 0; i < h; i++)
+    {
+        for(uint32_t j = 0; j < w; j++) 
+        {
+            uint16_t color = 
+            (((uint16_t)((mat[h - i - 1][j].red)   & 0xf8) ) << 8) |
+            (((uint16_t)((mat[h - i - 1][j].green) & 0xfc) ) << 3) |
+            (((uint16_t)((mat[h - i - 1][j].blue)  & 0xf8) ) >> 3) ;
+            if(fwrite(&color, 2, 1, fp) != 1)
+            {
+                return false;
+            }
+        }
+
+        /* byets of line should be multiple of 4 , otherwise filled by 0 */
+        size_t skip = (w * 2 + 3)/4 * 4 - w * 2;
+        while(skip--)
+        {
+            if(EOF == fputc(0,fp))
+            {
+                return false;
+            }
+        }
+    }
+
+
+    fclose(fp);
+    return true;
+}
+
+/*******************************************************************/
+
+bool Bmp::read(Image& mat, std::string file)
+{
+    FILE* fp = fopen(file.c_str(),"rb");
+    if(fp == NULL)
+    {
+        return false;
+    }
+
+    BitMapFileHeader fileHeader;
+    BitMapInfoHeader infoHeader;
+
+    if(!BMP_ReadFileHeader(fp, fileHeader) || !BMP_ReadInfoHeader(fp, infoHeader))
+    {
+        return false;
+    }
+
+    mat.resize(infoHeader.biWidth, infoHeader.biHeight);
+
+    bool rval = false;
+    switch(infoHeader.biBitCount)
+    {
+    case 24:
+        rval = readBgr24(mat, fp, fileHeader.bfOffBits, infoHeader.biWidth, infoHeader.biHeight);
+        break;
+
+    case 16:
+        rval = readRgb16(mat, fp, fileHeader.bfOffBits, infoHeader.biWidth, infoHeader.biHeight);
+        break;
+    
+    case 8:
+        rval = readPalette8(mat, fp, fileHeader.bfOffBits, infoHeader.biWidth, infoHeader.biHeight);
+        break;
+
+    case 4:
+        rval = readPalette4(mat, fp, fileHeader.bfOffBits, infoHeader.biWidth, infoHeader.biHeight);
+        break;
+
+    case 1:
+        rval = readPalette1(mat, fp, fileHeader.bfOffBits, infoHeader.biWidth, infoHeader.biHeight);
+        break;
+    }
+    fclose(fp);
+    return rval;
+}
+
+bool Bmp::write(Image& mat, std::string file, uint8_t bits)
+{
+    switch(bits)
+    {
+    case 16 : 
+        return writeRgb16(mat,file);
+    case 24 :
+        return writeBgr24(mat,file);
+    default:
+        return false;
+    }
+}
+
 
 }; // namespace lolita
