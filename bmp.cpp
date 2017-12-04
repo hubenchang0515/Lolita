@@ -199,6 +199,7 @@ static bool readPalette8(Image& mat, FILE* fp, uint32_t offset, uint32_t w, uint
 /* 4bit color , 16 palettes */
 static bool readPalette4(Image& mat, FILE* fp, uint32_t offset, uint32_t w, uint32_t h)
 {
+    uint64_t bytesOfLine = ((w+1)/2 + 3)/4 * 4; // skip filled 0
     mat.resize(w,h);
     uint8_t index = 0;
     BGRPalette color;
@@ -207,7 +208,7 @@ static bool readPalette4(Image& mat, FILE* fp, uint32_t offset, uint32_t w, uint
         uint32_t j = 0;
         for(; j < w; j+=2) 
         {
-            if(fseek(fp, offset + i * w + j, SEEK_SET) != 0)
+            if(fseek(fp, offset + i * bytesOfLine + j/4, SEEK_SET) != 0)
             {
                 return false;
             }
@@ -233,14 +234,6 @@ static bool readPalette4(Image& mat, FILE* fp, uint32_t offset, uint32_t w, uint
                 mat[h-i-1][j+1].blue = color.blue;
             }
         }
-
-        /* byets of line should be multiple of 4 , otherwise filled by 0 */
-        /* skip these data */
-        size_t skip = ((j+1) / 2 + 3)/4 * 4 - (j+1)/2;
-        if(fseek(fp, skip, SEEK_CUR) != 0)
-        {
-            return false;
-        }
     }
 
     return true;
@@ -249,6 +242,7 @@ static bool readPalette4(Image& mat, FILE* fp, uint32_t offset, uint32_t w, uint
 /* 1bit color , 2 palettes */
 static bool readPalette1(Image& mat, FILE* fp, uint32_t offset, uint32_t w, uint32_t h)
 {
+    uint64_t bytesOfLine = ((w+7)/8 + 3)/4 * 4;
     mat.resize(w,h);
     uint8_t index = 0;
     BGRPalette color;
@@ -257,33 +251,30 @@ static bool readPalette1(Image& mat, FILE* fp, uint32_t offset, uint32_t w, uint
         uint32_t j = 0;
         for(; j < w; j+=8) 
         {
-            if(fseek(fp, offset + i * w + j, SEEK_SET) != 0)
+            if(fseek(fp, offset + i * bytesOfLine + j/8, SEEK_SET) != 0)
             {
                 return false;
             }
             index = fgetc(fp);
+
             for(uint8_t k = 0; k < 8; k++)
             {
-                if(j+k < w)
+                /* width isn't multiple of 8 */
+                if(j+k >= w)
                 {
-                    if(fseek(fp, 14 + 40 + 4 * ((index >> k)  & 0x01), SEEK_SET) != 0 ||
-                        fread(&color, 4, 1, fp) != 1)
-                    {
-                        return false;
-                    }
-                    mat[h-i-1][j+7-k].red = color.red;
-                    mat[h-i-1][j+7-k].green = color.green;
-                    mat[h-i-1][j+7-k].blue = color.blue;
+                    break;
                 }
-            }
-        }
 
-        /* byets of line should be multiple of 4 , otherwise filled by 0 */
-        /* skip these data */
-        size_t skip = ((j+7) / 8 + 3)/4 * 4 - (j+7)/8;
-        if(fseek(fp, skip, SEEK_CUR) != 0)
-        {
-            return false;
+                if(fseek(fp, 14 + 40 + 4 * ((index >> (7-k)) & 0x01), SEEK_SET) != 0 ||
+                    fread(&color, 4, 1, fp) != 1)
+                {
+                    return false;
+                }
+                mat[h-i-1][j+k].red = color.red;
+                mat[h-i-1][j+k].green = color.green;
+                mat[h-i-1][j+k].blue = color.blue;
+                
+            }
         }
     }
 
@@ -440,7 +431,7 @@ static bool writeGray8(Image& mat, FILE* fp)
     fileHeader.bfReserved1 = 0; 
     fileHeader.bfReserved2 = 0; 
     fileHeader.bfOffBits = 14 + 40 + 256 * 4;
-    fileHeader.bfSize = 2*w*h + fileHeader.bfOffBits;
+    fileHeader.bfSize = w*h + fileHeader.bfOffBits;
     infoHeader.biSize = 40;
     infoHeader.biWidth =  w;
     infoHeader.biHeight = h;
@@ -518,7 +509,7 @@ static bool writeBinary1(Image& mat, FILE* fp)
     fileHeader.bfReserved1 = 0; 
     fileHeader.bfReserved2 = 0; 
     fileHeader.bfOffBits = 14 + 40 + 2 * 4;
-    fileHeader.bfSize = 2*w*h + fileHeader.bfOffBits;
+    fileHeader.bfSize = (w*h+7)/8 + fileHeader.bfOffBits;
     infoHeader.biSize = 40;
     infoHeader.biWidth =  w;
     infoHeader.biHeight = h;
