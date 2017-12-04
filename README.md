@@ -13,20 +13,29 @@ using namespace lolita;
 
 int main()
 {
-	Image Image;
-	Bmp::read(Image, "color.bmp");
-	Image.map([](Pixel& pix)
+	Image image;
+	Bmp::read(image, "24.bmp");
+	
+	/* reduce color space */
+	Bmp::write(image, "16.bmp", 16);
+	
+	
+	/* graying */
+	image.map([](Pixel& pix)
 	{
 		pix.red = pix.green  = pix.blue = 0.30 * pix.red + 0.59 * pix.green + 0.11 * pix.blue; 
 	});
-	Bmp::write(Image, "gray.bmp");
 	
+	/* save gray scale image as 8 bit */
+	Bmp::write(image, "8.bmp", 8);
+	
+	
+	/* binaryzation */
 	uint64_t histogram[256] = { 0 };
-	Image.map([&histogram](Pixel& pix)
+	image.map([&histogram](Pixel& pix)
 	{
 		histogram[pix.red] += 1;
 	});
-	
 	uint16_t summit1st = 0,summit2nd = 0;
 	for(uint16_t i = 0; i < 256; i++)
 	{
@@ -42,7 +51,7 @@ int main()
 	
 	uint8_t threshold = (summit1st + summit2nd) / 2;
 	
-	Image.map([threshold](Pixel& pix)
+	image.map([threshold](Pixel& pix)
 	{
 		if(pix.red >= threshold)
 		{
@@ -53,6 +62,9 @@ int main()
 			pix = 0;
 		}
 	});
-	Bmp::write(Image, "bin.bmp");
+
+	/* save binary image as 1 bit */
+	Bmp::write(image, "1.bmp", 1);
+
 }
 ```

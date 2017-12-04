@@ -221,19 +221,22 @@ static bool readPalette4(Image& mat, FILE* fp, uint32_t offset, uint32_t w, uint
             mat[h-i-1][j].green = color.green;
             mat[h-i-1][j].blue = color.blue;
 
-            if(fseek(fp, 14 + 40 + 4 * (index & 0x0f), SEEK_SET) != 0 ||
-                fread(&color, 4, 1, fp) != 1)
+            if(j+1 < w)
             {
-                return false;
+                if(fseek(fp, 14 + 40 + 4 * (index & 0x0f), SEEK_SET) != 0 ||
+                    fread(&color, 4, 1, fp) != 1)
+                {
+                    return false;
+                }
+                mat[h-i-1][j+1].red = color.red;
+                mat[h-i-1][j+1].green = color.green;
+                mat[h-i-1][j+1].blue = color.blue;
             }
-            mat[h-i-1][j+1].red = color.red;
-            mat[h-i-1][j+1].green = color.green;
-            mat[h-i-1][j+1].blue = color.blue;
         }
 
         /* byets of line should be multiple of 4 , otherwise filled by 0 */
         /* skip these data */
-        size_t skip = (j / 2 + 3)/4 * 4 - j/2;
+        size_t skip = ((j+1) / 2 + 3)/4 * 4 - (j+1)/2;
         if(fseek(fp, skip, SEEK_CUR) != 0)
         {
             return false;
@@ -261,20 +264,23 @@ static bool readPalette1(Image& mat, FILE* fp, uint32_t offset, uint32_t w, uint
             index = fgetc(fp);
             for(uint8_t k = 0; k < 8; k++)
             {
-                if(fseek(fp, 14 + 40 + 4 * ((index >> k)  & 0x01), SEEK_SET) != 0 ||
-                    fread(&color, 4, 1, fp) != 1)
+                if(j+k < w)
                 {
-                    return false;
+                    if(fseek(fp, 14 + 40 + 4 * ((index >> k)  & 0x01), SEEK_SET) != 0 ||
+                        fread(&color, 4, 1, fp) != 1)
+                    {
+                        return false;
+                    }
+                    mat[h-i-1][j+7-k].red = color.red;
+                    mat[h-i-1][j+7-k].green = color.green;
+                    mat[h-i-1][j+7-k].blue = color.blue;
                 }
-                mat[h-i-1][j+7-k].red = color.red;
-                mat[h-i-1][j+7-k].green = color.green;
-                mat[h-i-1][j+7-k].blue = color.blue;
             }
         }
 
         /* byets of line should be multiple of 4 , otherwise filled by 0 */
         /* skip these data */
-        size_t skip = (j / 8 + 3)/4 * 4 - j/8;
+        size_t skip = ((j+7) / 8 + 3)/4 * 4 - (j+7)/8;
         if(fseek(fp, skip, SEEK_CUR) != 0)
         {
             return false;
@@ -286,13 +292,8 @@ static bool readPalette1(Image& mat, FILE* fp, uint32_t offset, uint32_t w, uint
 
 
 /* 24bit color , BGR888 */
-static bool writeBgr24(Image& mat, std::string file)
+static bool writeBgr24(Image& mat, FILE* fp)
 {
-    FILE* fp = fopen(file.c_str(),"wb");
-    if(fp == NULL)
-    {
-        return false;
-    }
 
     uint32_t w = mat.width();
     uint32_t h = mat.height(); 
@@ -325,8 +326,10 @@ static bool writeBgr24(Image& mat, std::string file)
         return false;
     }
 
+    /* write color data */
     for(uint32_t i = 0; i < h; i++)
     {
+        /* color data of a line */
         for(uint32_t j = 0; j < w; j++) 
         {
             if(EOF == fputc(mat[h - i - 1][j].blue , fp) ||
@@ -348,21 +351,13 @@ static bool writeBgr24(Image& mat, std::string file)
         }
     }
 
-
-    fclose(fp);
     return true;
 }
 
 
 /* 16bit color , BGR565 */
-static bool writeRgb16(Image& mat, std::string file)
+static bool writeRgb16(Image& mat, FILE* fp)
 {
-    FILE* fp = fopen(file.c_str(),"wb");
-    if(fp == NULL)
-    {
-        return false;
-    }
-
     uint32_t w = mat.width();
     uint32_t h = mat.height(); 
 
@@ -427,8 +422,181 @@ static bool writeRgb16(Image& mat, std::string file)
         }
     }
 
+    return true;
+}
 
-    fclose(fp);
+
+/* 8bit color , only for gray scale image */
+static bool writeGray8(Image& mat, FILE* fp)
+{
+    uint32_t w = mat.width();
+    uint32_t h = mat.height(); 
+
+    BitMapFileHeader fileHeader;
+    BitMapInfoHeader infoHeader;
+
+    fileHeader.bfType[0] = 'B'; 
+    fileHeader.bfType[1] = 'M'; 
+    fileHeader.bfReserved1 = 0; 
+    fileHeader.bfReserved2 = 0; 
+    fileHeader.bfOffBits = 14 + 40 + 256 * 4;
+    fileHeader.bfSize = 2*w*h + fileHeader.bfOffBits;
+    infoHeader.biSize = 40;
+    infoHeader.biWidth =  w;
+    infoHeader.biHeight = h;
+    infoHeader.biPlanes = 1; 
+    infoHeader.biBitCount = 8;
+    infoHeader.biCompression = 0; 
+    infoHeader.biSizeImage = ((w+3)/4*4)*h;
+    infoHeader.biXPelsPerMeter = 3780; 
+    infoHeader.biYPelsPerMeter = 3780; 
+    infoHeader.biClrUsed = 0; 
+    infoHeader.biClrImportant = 0;
+
+    if(!BMP_WriteFileHeader(fp, fileHeader) || !BMP_WriteInfoHeader(fp, infoHeader))
+    {
+        return false;
+    }
+
+    /* write 256 pallete */
+    BGRPalette color;
+    for(uint16_t gray = 0; gray < 256; gray++)
+    {
+        color.blue = color.green = color.red = (uint8_t)gray;
+        if(fwrite(&color, 4, 1, fp) != 1)
+        {
+            return false;
+        }
+    }
+
+
+    /* write color data */
+    for(uint32_t i = 0; i < h; i++)
+    {
+        /* color data of a line */
+        for(uint32_t j = 0; j < w; j++) 
+        {
+            /* Not gray scale image */
+            if(mat[h - i - 1][j].blue != mat[h - i - 1][j].green || 
+                mat[h - i - 1][j].blue != mat[h - i - 1][j].red)
+            {
+                return false;
+            }
+
+            if(EOF == fputc(mat[h - i - 1][j].blue, fp))
+            {
+                return false;
+            }
+        }
+
+        /* byets of line should be multiple of 4 , otherwise filled by 0 */
+        size_t skip = (w+3)/4 * 4 - w;
+        while(skip--)
+        {
+            if(EOF == fputc(0,fp))
+            {
+                return false;
+            }
+        }
+    }
+
+    return true;
+}
+
+
+/* 1bit color , only for binary image */
+static bool writeBinary1(Image& mat, FILE* fp)
+{
+    uint32_t w = mat.width();
+    uint32_t h = mat.height(); 
+
+    BitMapFileHeader fileHeader;
+    BitMapInfoHeader infoHeader;
+
+    fileHeader.bfType[0] = 'B'; 
+    fileHeader.bfType[1] = 'M'; 
+    fileHeader.bfReserved1 = 0; 
+    fileHeader.bfReserved2 = 0; 
+    fileHeader.bfOffBits = 14 + 40 + 2 * 4;
+    fileHeader.bfSize = 2*w*h + fileHeader.bfOffBits;
+    infoHeader.biSize = 40;
+    infoHeader.biWidth =  w;
+    infoHeader.biHeight = h;
+    infoHeader.biPlanes = 1; 
+    infoHeader.biBitCount = 1;
+    infoHeader.biCompression = 0; 
+    infoHeader.biSizeImage = ((w+3)/4*4)*h;
+    infoHeader.biXPelsPerMeter = 3780; 
+    infoHeader.biYPelsPerMeter = 3780; 
+    infoHeader.biClrUsed = 0; 
+    infoHeader.biClrImportant = 0;
+
+    if(!BMP_WriteFileHeader(fp, fileHeader) || !BMP_WriteInfoHeader(fp, infoHeader))
+    {
+        return false;
+    }
+
+    /* write 2 pallete */
+    BGRPalette color;
+    color.blue = color.green = color.red = 0;
+    if(fwrite(&color, 4, 1, fp) != 1)
+    {
+        return false;
+    }
+    color.blue = color.green = color.red = 0xff;
+    if(fwrite(&color, 4, 1, fp) != 1)
+    {
+        return false;
+    }
+    
+
+
+    /* write color data */
+    for(uint32_t i = 0; i < h; i++)
+    {
+        /* color data of a line */
+        for(uint32_t j = 0; j < w; j+=8) 
+        {
+            uint8_t color = 0;
+            for(int bit = 0; bit < 8; bit++)
+            {
+                /* width isn't multiple of 8 */
+                if(j+bit >= w)
+                {
+                    break;
+                }
+
+                if(uint32_t(mat[h-i-1][j+bit]) == 0)
+                {
+                    continue;
+                }
+                else if(uint32_t(mat[h-i-1][j+bit]) == 0xffffff)
+                {
+                    color |= 1 << (7-bit);
+                }
+                else // not binary image
+                {
+                    return false;
+                }
+            }
+            
+            if(EOF == fputc(color, fp))
+            {
+                return false;
+            }
+        }
+
+        /* byets of line should be multiple of 4 , otherwise filled by 0 */
+        size_t skip = ((w+7)/8 + 3)/4 * 4 - (w+7)/8;
+        while(skip--)
+        {
+            if(EOF == fputc(0,fp))
+            {
+                return false;
+            }
+        }
+    }
+
     return true;
 }
 
@@ -481,15 +649,31 @@ bool Bmp::read(Image& mat, std::string file)
 
 bool Bmp::write(Image& mat, std::string file, uint8_t bits)
 {
-    switch(bits)
+    FILE* fp = fopen(file.c_str(),"wb");
+    if(fp == NULL)
     {
-    case 16 : 
-        return writeRgb16(mat,file);
-    case 24 :
-        return writeBgr24(mat,file);
-    default:
         return false;
     }
+
+    bool rval = false;
+    switch(bits)
+    {
+    case 24 :
+        rval = writeBgr24(mat, fp);
+        break;
+    case 16 : 
+        rval = writeRgb16(mat, fp);
+        break;
+    case 8:
+        rval = writeGray8(mat, fp);
+        break;
+    case 1:
+        rval = writeBinary1(mat, fp);
+        break;
+    }
+
+    fclose(fp);
+    return rval;
 }
 
 
