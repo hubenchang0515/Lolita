@@ -1,6 +1,9 @@
 #include <stdio.h>
 #include "bmp.h"
 
+namespace lolita
+{
+
 typedef struct BitMapFileHeader 
 { 
     uint8_t  bfType[2];//'BM'
@@ -92,9 +95,28 @@ static bool BMP_WriteInfoHeader(FILE *bmpfile,BitMapInfoHeader& buf)
 }  
 
 
-
-namespace lolita
+/**********************************************************************************/
+/* 32bit color BGRA8888 */
+static bool readBgra32(Image& mat, FILE* fp, uint32_t offset, uint32_t w, uint32_t h)
 {
+    mat.resize(w,h);
+    if(fseek(fp, offset, SEEK_SET) != 0)
+    {
+        return false;
+    }
+    for(uint32_t i = 0; i < h; i++)
+    {
+        for(uint32_t j = 0; j < w; j++) 
+        {
+            mat[h-i-1][j].blue = fgetc(fp);
+            mat[h-i-1][j].green = fgetc(fp);
+            mat[h-i-1][j].red = fgetc(fp);
+            mat[h-i-1][j].alpha = fgetc(fp);
+        }
+    }
+
+    return true;
+}
 
 /* 24bit color BGR888 */
 static bool readBgr24(Image& mat, FILE* fp, uint32_t offset, uint32_t w, uint32_t h)
@@ -274,6 +296,75 @@ static bool readPalette1(Image& mat, FILE* fp, uint32_t offset, uint32_t w, uint
                 mat[h-i-1][j+k].green = color.green;
                 mat[h-i-1][j+k].blue = color.blue;
                 
+            }
+        }
+    }
+
+    return true;
+}
+
+
+/* 32bit color , BGRA8888 */
+static bool writeBgra32(Image& mat, FILE* fp)
+{
+
+    uint32_t w = mat.width();
+    uint32_t h = mat.height(); 
+
+    BitMapFileHeader fileHeader;
+    BitMapInfoHeader infoHeader;
+
+    fileHeader.bfType[0] = 'B'; 
+    fileHeader.bfType[1] = 'M'; 
+    fileHeader.bfReserved1 = 0; 
+    fileHeader.bfReserved2 = 0; 
+    fileHeader.bfOffBits = 14 + 124;
+    fileHeader.bfSize = 4*w*h + fileHeader.bfOffBits;
+    infoHeader.biSize = 124;
+    infoHeader.biWidth =  w;
+    infoHeader.biHeight = h;
+    infoHeader.biPlanes = 1; 
+    infoHeader.biBitCount = 32;
+    infoHeader.biCompression = 3; 
+    infoHeader.biSizeImage = ((w*4+3)/4*4)*h;
+    infoHeader.biXPelsPerMeter = 2835; 
+    infoHeader.biYPelsPerMeter = 2835; 
+    infoHeader.biClrUsed = 0; 
+    infoHeader.biClrImportant = 0;
+
+    if(!BMP_WriteFileHeader(fp, fileHeader) || !BMP_WriteInfoHeader(fp, infoHeader))
+    {
+        return false;
+    }
+
+    /* fathomless rule , let them happy */
+    for(int i = 14 + 40; i < 14 + 124; i++)
+    {
+        fputc(0, fp);
+    }
+
+    /* write color data */
+    for(uint32_t i = 0; i < h; i++)
+    {
+        /* color data of a line */
+        for(uint32_t j = 0; j < w; j++) 
+        {
+            if(EOF == fputc(mat[h - i - 1][j].blue , fp)   ||
+                EOF == fputc(mat[h - i - 1][j].green , fp) ||
+                EOF == fputc(mat[h - i - 1][j].red , fp)   ||
+                EOF == fputc(mat[h - i - 1][j].alpha , fp) )
+            {
+                return false;
+            }
+        }
+
+        /* byets of line should be multiple of 4 , otherwise filled by 0 */
+        size_t skip = (w * 4 + 3)/4 * 4 - w * 4;
+        while(skip--)
+        {
+            if(EOF == fputc(0,fp))
+            {
+                return false;
             }
         }
     }
@@ -557,11 +648,15 @@ static bool writeBinary1(Image& mat, FILE* fp)
                     break;
                 }
 
-                if(uint32_t(mat[h-i-1][j+bit]) == 0)
+                if(mat[h-i-1][j+bit].red == 0    && 
+                    mat[h-i-1][j+bit].green == 0 && 
+                    mat[h-i-1][j+bit].blue == 0)
                 {
                     continue;
                 }
-                else if(uint32_t(mat[h-i-1][j+bit]) == 0xffffff)
+                else if(mat[h-i-1][j+bit].red == 0xff && 
+                    mat[h-i-1][j+bit].green == 0xff   && 
+                    mat[h-i-1][j+bit].blue == 0xff)
                 {
                     color |= 1 << (7-bit);
                 }
@@ -614,6 +709,10 @@ bool Bmp::read(Image& mat, std::string file)
     bool rval = false;
     switch(infoHeader.biBitCount)
     {
+    case 32:
+        rval = readBgra32(mat, fp, fileHeader.bfOffBits, infoHeader.biWidth, infoHeader.biHeight);
+        break;
+
     case 24:
         rval = readBgr24(mat, fp, fileHeader.bfOffBits, infoHeader.biWidth, infoHeader.biHeight);
         break;
@@ -649,6 +748,9 @@ bool Bmp::write(Image& mat, std::string file, uint8_t bits)
     bool rval = false;
     switch(bits)
     {
+    case 32 :
+        rval = writeBgra32(mat, fp);
+        break;
     case 24 :
         rval = writeBgr24(mat, fp);
         break;
