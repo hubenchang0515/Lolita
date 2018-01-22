@@ -13,58 +13,25 @@ using namespace lolita;
 
 int main()
 {
-	Image image;
-	Bmp::read(image, "24.bmp");
-	
-	/* reduce color space */
-	Bmp::write(image, "16.bmp", 16);
-	
-	
-	/* graying */
-	image.map([](Pixel& pix)
-	{
-		pix.red = pix.green  = pix.blue = 0.30 * pix.red + 0.59 * pix.green + 0.11 * pix.blue; 
-	});
-	
-	/* save gray scale image as 8 bit */
-	Bmp::write(image, "8.bmp", 8);
-	
-	
-	/* binaryzation */
-	uint64_t histogram[256] = { 0 };
-	image.map([&histogram](Pixel& pix)
-	{
-		histogram[pix.red] += 1;
-	});
-	uint16_t summit1st = 0,summit2nd = 0;
-	for(uint16_t i = 0; i < 256; i++)
-	{
-		if(histogram[i] > summit1st)
-		{
-			summit1st = i;
-		}
-		else if(histogram[i] > summit2nd)
-		{
-			summit2nd = i;
-		}
-	}
-	
-	uint8_t threshold = (summit1st + summit2nd) / 2;
-	
-	image.map([threshold](Pixel& pix)
-	{
-		if(pix.red >= threshold)
-		{
-			pix = 0xffffff;
-		}
-		else
-		{
-			pix = 0;
-		}
-	});
-
-	/* save binary image as 1 bit */
-	Bmp::write(image, "1.bmp", 1);
-
+	Image mat;
+	Bmp::read(mat, "24.bmp");
+	Bmp::write(mat, "16.bmp", 16);
+	grayScale(mat);
+	Bmp::write(mat, "8.bmp", 8);
+	binaryzation(mat);
+	Bmp::write(mat, "1.bmp", 1);
+	return 0;
 }
 ```
+
+![24](doc/res/24.bmp)
+![16](doc/res/16.bmp)
+![8](doc/res/8.bmp)
+![1](doc/res/1.bmp)
+
+
+## Document
+* [RGBA Pixel](doc/Pixel.md)
+* [Matrix and Image](doc/Mat.md)  
+* [Bmp File IO](doc/Bmp.md)  
+* [Basic Tools](doc/Tools.md)

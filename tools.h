@@ -7,7 +7,8 @@
 namespace lolita
 {
 
-    
+void grayScale(Image& mat);
+void binaryzation(Image& mat, uint8_t threshold = 0);
 
 }; // namespace lolita
 
