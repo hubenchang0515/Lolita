@@ -2,8 +2,9 @@
 #define LOLITA_MAT_H
 
 #include <stddef.h>
-#include <vector>
+#include <algorithm>
 #include <functional>
+#include <iostream>
 
 namespace lolita
 {
@@ -105,14 +106,20 @@ void Mat<ElemType>::map(std::function<void(ElemType&)> callback)
     }
 }
 
+/************************************************************************************************/
+
+
 }; // namespace lolita
 
 
 #include "pixel.h"
 namespace lolita
 {
+
     using Image = Mat<Pixel>;
+
 }; // namespace lolita
+
 
 
 #endif

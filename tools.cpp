@@ -3,6 +3,9 @@
 namespace lolita
 {
 
+static Pixel convolutionElement(Image& mat, uint32_t row, uint32_t column, Mat<double>& kernel);
+static Pixel middle(Image& mat, uint32_t x_center, uint32_t y_center, uint32_t radius);
+
 void grayScale(Image& mat)
 {
     mat.map([](Pixel& pix)
@@ -35,6 +38,133 @@ void binaryzation(Image& mat, uint8_t threshold)
     {
         pix.red = pix.green = pix.blue = (pix.red >= threshold ? 0xff : 0);
     });
+}
+
+
+bool convolution(Image& mat, Mat<double>& kernel)
+{
+    if( kernel.width() != kernel.height() ||    // not a square
+        kernel.width() & 1 != 1 ||              // length of side is not a odd number
+        kernel.width() > mat.width() ||         // kernel is bigger than mat
+        kernel.width() > mat.height())
+    {
+        return false;
+    }
+
+
+    Image backup = mat;
+
+    for(uint32_t x = 0; x < mat.width(); x++)
+    {
+        for(uint32_t y = 0; y < mat.height(); y++)
+        {
+            mat[y][x] = convolutionElement(backup, y, x, kernel);
+        }
+    }
+
+    return true;
+}
+
+
+void detectEdge(Image& mat)
+{
+    Mat<double> kernel(3,3);
+    kernel.map([](double& element){element = 1;});
+    kernel[1][1] = -8;
+
+    convolution(mat, kernel);
+}
+
+
+void averageBlur(Image& mat, uint32_t radius)
+{
+    Mat<double> kernel(2*radius + 1, 2*radius + 1);
+    kernel.map([radius](double& pix){pix = 1.0/(2*radius + 1)/(2*radius + 1);});
+    convolution(mat, kernel);
+}
+
+void middleBlur(Image& mat, uint32_t radius)
+{
+    Image backup = mat;
+    for(uint32_t y = 0 ; y < mat.height(); y++)
+    {
+        for(uint32_t x = 0; x < mat.width(); x++)
+        {
+            mat[y][x] = middle(backup, x, y, radius);
+        }
+    }
+}
+
+
+
+
+/**[Private]***********************************************************************************************/
+static Pixel convolutionElement(Image& mat, uint32_t row, uint32_t column, Mat<double>& kernel)
+{
+    Pixel result = 0;
+    uint32_t radius = (kernel.width() - 1 ) / 2;
+
+    uint32_t row_begin = (row > radius) ? (row - radius) : 0;
+    uint32_t row_end   = (mat.height() >= radius + row + 1) ? (radius + row + 1) : mat.height();
+
+    uint32_t column_begin = (column > radius) ? (column - radius) : 0;
+    uint32_t column_end   = (mat.width() >= radius + column + 1) ? (radius + column + 1) : mat.width();
+    
+    double red   = 0;
+    double green = 0;
+    double blue  = 0;
+
+    for(uint32_t y = row_begin; y < row_end; y++)
+    {
+        for(uint32_t x = column_begin; x < column_end; x++)
+        {
+            red += (double)(mat[y][x].red) * kernel[radius - row + y][radius - column + x];
+            green += (double)(mat[y][x].green) * kernel[radius - row + y][radius - column + x];
+            blue += (double)(mat[y][x].blue) * kernel[radius - row + y][radius - column + x];
+        }
+    }
+  
+    result.red = red < 0 ? 0 : red > 255 ? 255 : red;
+    result.green = green < 0 ? 0 : green > 255 ? 255 : green;
+    result.blue = blue < 0 ? 0 : blue > 255 ? 255 : blue;
+    //std::cout << red << " " << green << " " << blue << std::endl;
+
+    return result;
+}
+
+
+
+
+static Pixel middle(Image& mat, uint32_t x_center, uint32_t y_center, uint32_t radius)
+{
+    Pixel result = 0;
+    uint32_t count = 0;
+    std::vector<Pixel> temp(count);
+    /* inside */
+    if( x_center >= radius && 
+        y_center >= radius && 
+        mat.width() >= radius + x_center + 1 && 
+        mat.height() >= radius + y_center + 1)
+    {
+        std::vector<Pixel> temp;
+        
+        for(uint32_t x = x_center - radius; x <= x_center + radius; x++)
+        {
+            for(uint32_t y = y_center - radius; y <= y_center + radius; y++)
+            {
+                temp.push_back(mat[y][x]); 
+            }
+        }
+
+        std::sort(temp.begin(), temp.end());
+        result = temp[temp.size() / 2 ];
+    }
+    else
+    {
+        result = mat[y_center][x_center]; 
+    }
+
+    return result;
 }
 
 }; // namespace lolita
