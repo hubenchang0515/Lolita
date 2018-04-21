@@ -65,3 +65,10 @@ Blur image by average.
 * ``mat`` - Image to blur.
 * ``radius`` - Radius of convolution kernel.
 
+```C++
+void medianBlur(Image& mat, uint32_t radius);
+```
+Blur image by median value.
+* ``mat`` - Image to blur.
+* ``radius`` - Radius of convolution kernel.
+

@@ -4,7 +4,7 @@ namespace lolita
 {
 
 static Pixel convolutionElement(Image& mat, uint32_t row, uint32_t column, Mat<double>& kernel);
-static Pixel middle(Image& mat, uint32_t x_center, uint32_t y_center, uint32_t radius);
+static Pixel median(Image& mat, uint32_t row, uint32_t column, uint32_t radius);
 
 void grayScale(Image& mat)
 {
@@ -83,14 +83,14 @@ void averageBlur(Image& mat, uint32_t radius)
     convolution(mat, kernel);
 }
 
-void middleBlur(Image& mat, uint32_t radius)
+void medianBlur(Image& mat, uint32_t radius)
 {
     Image backup = mat;
     for(uint32_t y = 0 ; y < mat.height(); y++)
     {
         for(uint32_t x = 0; x < mat.width(); x++)
         {
-            mat[y][x] = middle(backup, x, y, radius);
+            mat[y][x] = median(backup, y, x, radius);
         }
     }
 }
@@ -135,34 +135,27 @@ static Pixel convolutionElement(Image& mat, uint32_t row, uint32_t column, Mat<d
 
 
 
-static Pixel middle(Image& mat, uint32_t x_center, uint32_t y_center, uint32_t radius)
+static Pixel median(Image& mat, uint32_t row, uint32_t column, uint32_t radius)
 {
     Pixel result = 0;
-    uint32_t count = 0;
-    std::vector<Pixel> temp(count);
-    /* inside */
-    if( x_center >= radius && 
-        y_center >= radius && 
-        mat.width() >= radius + x_center + 1 && 
-        mat.height() >= radius + y_center + 1)
-    {
-        std::vector<Pixel> temp;
-        
-        for(uint32_t x = x_center - radius; x <= x_center + radius; x++)
-        {
-            for(uint32_t y = y_center - radius; y <= y_center + radius; y++)
-            {
-                temp.push_back(mat[y][x]); 
-            }
-        }
+    std::vector<Pixel> temp;
+    
+    uint32_t row_begin = (row > radius) ? (row - radius) : 0;
+    uint32_t row_end   = (mat.height() >= radius + row + 1) ? (radius + row + 1) : mat.height();
 
-        std::sort(temp.begin(), temp.end());
-        result = temp[temp.size() / 2 ];
-    }
-    else
+    uint32_t column_begin = (column > radius) ? (column - radius) : 0;
+    uint32_t column_end   = (mat.width() >= radius + column + 1) ? (radius + column + 1) : mat.width();
+    
+    for(uint32_t y = row_begin; y < row_end; y++)
     {
-        result = mat[y_center][x_center]; 
+        for(uint32_t x = column_begin; x < column_end; x++)
+        {
+            temp.push_back(mat[y][x]); 
+        }
     }
+    std::sort(temp.begin(), temp.end());
+    result = temp[temp.size() / 2 ];
+    
 
     return result;
 }

@@ -15,7 +15,7 @@ bool convolution(Image& mat, Mat<double>& kernel);
 void detectEdge(Image& mat);
 
 void averageBlur(Image& mat, uint32_t radius);
-void middleBlur(Image& mat, uint32_t radius);
+void medianBlur(Image& mat, uint32_t radius);
 }; // namespace lolita
 
 #endif
