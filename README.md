@@ -5,6 +5,19 @@ Lolita is a Computer Vision library of C++
 * Need C++11
 * Doesn't Ready
 
+## TODO List
+ - [x] Pixel Class
+ - [x] Matrix and Image Class
+ - [x] BMP File I/O
+ - [x] Image Convolution
+ - [x] Average Blur and Median Blur
+ - [x] Edge detection
+ - [ ] Eroding and Dilating
+ - [ ] Hough Lines and Hough Circles
+ - [ ] Remapping
+ - [ ] Affine Transformation
+ - [ ] DFT and FFT
+
 ## Demo
 ```C++
 #include <lolita/lolita.h>
