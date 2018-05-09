@@ -4,7 +4,7 @@ namespace lolita
 {
 
 static Pixel convolutionElement(Image& mat, uint32_t row, uint32_t column, Mat<double>& kernel);
-static Pixel median(Image& mat, uint32_t row, uint32_t column, uint32_t radius);
+static Pixel traverse(Image& mat, uint32_t row, uint32_t column, uint32_t radius, std::function<Pixel(std::vector<Pixel>&)> callback);
 
 void grayScale(Image& mat)
 {
@@ -90,7 +90,12 @@ void medianBlur(Image& mat, uint32_t radius)
     {
         for(uint32_t x = 0; x < mat.width(); x++)
         {
-            mat[y][x] = median(backup, y, x, radius);
+            mat[y][x] = traverse(mat, y, x, radius,
+                            [](std::vector<Pixel>& pixels)->Pixel
+                            {
+                                std:sort(pixels.begin(), pixels.end());
+                                return pixels[pixels.size()/2];
+                            });
         }
     }
 }
@@ -133,11 +138,8 @@ static Pixel convolutionElement(Image& mat, uint32_t row, uint32_t column, Mat<d
 }
 
 
-
-
-static Pixel median(Image& mat, uint32_t row, uint32_t column, uint32_t radius)
+static Pixel traverse(Image& mat, uint32_t row, uint32_t column, uint32_t radius, std::function<Pixel(std::vector<Pixel>&)> callback)
 {
-    Pixel result = 0;
     std::vector<Pixel> temp;
     
     uint32_t row_begin = (row > radius) ? (row - radius) : 0;
@@ -153,11 +155,10 @@ static Pixel median(Image& mat, uint32_t row, uint32_t column, uint32_t radius)
             temp.push_back(mat[y][x]); 
         }
     }
-    std::sort(temp.begin(), temp.end());
-    result = temp[temp.size() / 2 ];
-    
 
-    return result;
+    return callback(temp);
 }
+
+
 
 }; // namespace lolita
