@@ -16,6 +16,12 @@ void detectEdge(Image& mat);
 
 void averageBlur(Image& mat, uint32_t radius);
 void medianBlur(Image& mat, uint32_t radius);
+
+void erode(Image& mat, uint32_t radius);
+void dilate(Image& mat, uint32_t radius);
+
+void gaussian(Mat<double>& mat, uint32_t radius, double variance);
+void gaussianBlur(Image& mat, uint32_t radius, double variance = 1);
 }; // namespace lolita
 
 #endif

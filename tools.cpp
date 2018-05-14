@@ -1,11 +1,26 @@
 #include "tools.h"
+#include <math.h>
 
 namespace lolita
 {
 
+
+/**[Private]***********************************************************************************************/
 static Pixel convolutionElement(Image& mat, uint32_t row, uint32_t column, Mat<double>& kernel);
 static Pixel traverse(Image& mat, uint32_t row, uint32_t column, uint32_t radius, std::function<Pixel(std::vector<Pixel>&)> callback);
 
+
+/******************************************************************************************
+ * Name       : grayScale
+ * 
+ * Input      : mat - source image
+ * 
+ * Output     : mat - gray-scale image
+ * 
+ * Return     : void
+ * 
+ * Function   : Convert a image to gray-scale image
+ ******************************************************************************************/
 void grayScale(Image& mat)
 {
     mat.map([](Pixel& pix)
@@ -14,6 +29,24 @@ void grayScale(Image& mat)
     });
 }
 
+
+
+/******************************************************************************************
+ * Name       : binaryzation
+ * 
+ * Input      : mat - source gray-scale image
+ * 
+ *              threshold - pixel in range of [threshold, 255] will be set as 255
+ *                          pixel in range of [0, threshold)  will be set as 0
+ *                          if threshold is 0 , this function will calculate a threshold by 
+ *                          Kittler Algorithm
+ * 
+ * Output     : mat - binaryzation image
+ * 
+ * Return     : void
+ * 
+ * Function   : Convert a gray-scale image to binaryzation image
+ ******************************************************************************************/
 void binaryzation(Image& mat, uint8_t threshold)
 {
     if(threshold == 0)
@@ -41,6 +74,19 @@ void binaryzation(Image& mat, uint8_t threshold)
 }
 
 
+/******************************************************************************************
+ * Name       : convolution
+ * 
+ * Input      : mat - source image
+ * 
+ *              kernel - a real matrix 
+ * 
+ * Output     : mat - convoluted image
+ * 
+ * Return     : bool
+ * 
+ * Function   : mat convolute kernel
+ ******************************************************************************************/
 bool convolution(Image& mat, Mat<double>& kernel)
 {
     if( kernel.width() != kernel.height() ||    // not a square
@@ -65,7 +111,17 @@ bool convolution(Image& mat, Mat<double>& kernel)
     return true;
 }
 
-
+/******************************************************************************************
+ * Name       : detectEdge
+ * 
+ * Input      : mat - source image
+ * 
+ * Output     : mat - treated image
+ * 
+ * Return     : void
+ * 
+ * Function   : edge detector
+ ******************************************************************************************/
 void detectEdge(Image& mat)
 {
     Mat<double> kernel(3,3);
@@ -76,6 +132,20 @@ void detectEdge(Image& mat)
 }
 
 
+
+/******************************************************************************************
+ * Name       : averageBlur
+ * 
+ * Input      : mat - source image
+ * 
+ *              radius - radius of convolution kernel
+ * 
+ * Output     : mat - treated image
+ * 
+ * Return     : void
+ * 
+ * Function   : blur image by average
+ ******************************************************************************************/
 void averageBlur(Image& mat, uint32_t radius)
 {
     Mat<double> kernel(2*radius + 1, 2*radius + 1);
@@ -83,6 +153,21 @@ void averageBlur(Image& mat, uint32_t radius)
     convolution(mat, kernel);
 }
 
+
+
+/******************************************************************************************
+ * Name       : medianBlur
+ * 
+ * Input      : mat - source image
+ * 
+ *              radius - radius of convolution kernel
+ * 
+ * Output     : mat - treated image
+ * 
+ * Return     : void
+ * 
+ * Function   : blur image by median value
+ ******************************************************************************************/
 void medianBlur(Image& mat, uint32_t radius)
 {
     Image backup = mat;
@@ -90,7 +175,7 @@ void medianBlur(Image& mat, uint32_t radius)
     {
         for(uint32_t x = 0; x < mat.width(); x++)
         {
-            mat[y][x] = traverse(mat, y, x, radius,
+            mat[y][x] = traverse(backup, y, x, radius,
                             [](std::vector<Pixel>& pixels)->Pixel
                             {
                                 std:sort(pixels.begin(), pixels.end());
@@ -99,6 +184,140 @@ void medianBlur(Image& mat, uint32_t radius)
         }
     }
 }
+
+
+
+/******************************************************************************************
+ * Name       : erode
+ * 
+ * Input      : mat - source image
+ * 
+ *              radius - radius of convolution kernel
+ * 
+ * Output     : mat - treated image
+ * 
+ * Return     : void
+ * 
+ * Function   : erode image by minimum value of area
+ ******************************************************************************************/
+void erode(Image& mat, uint32_t radius)
+{
+    Image backup = mat;
+    for(uint32_t y = 0 ; y < mat.height(); y++)
+    {
+        for(uint32_t x = 0; x < mat.width(); x++)
+        {
+            mat[y][x] = traverse(backup, y, x, radius,
+                            [](std::vector<Pixel>& pixels)->Pixel
+                            {
+                                return *std::min_element(pixels.begin(), pixels.end());
+                            });
+        }
+    }
+}
+
+
+
+/******************************************************************************************
+ * Name       : dilate
+ * 
+ * Input      : mat - source image
+ * 
+ *              radius - radius of convolution kernel
+ * 
+ * Output     : mat - treated image
+ * 
+ * Return     : void
+ * 
+ * Function   : dilate image by maximum value of area
+ ******************************************************************************************/
+void dilate(Image& mat, uint32_t radius)
+{
+    Image backup = mat;
+    for(uint32_t y = 0 ; y < mat.height(); y++)
+    {
+        for(uint32_t x = 0; x < mat.width(); x++)
+        {
+            mat[y][x] = traverse(backup, y, x, radius,
+                            [](std::vector<Pixel>& pixels)->Pixel
+                            {
+                                return *std::max_element(pixels.begin(), pixels.end());
+                            });
+        }
+    }
+}
+
+
+
+
+
+/******************************************************************************************
+ * Name       : gaussian
+ * 
+ * Input      : mat - empty matrix
+ * 
+ *              radius - radius of convolution kernel
+ * 
+ *              variance - sigma of Gaussian distribution
+ * 
+ * Output     : mat - Gaussian distribution Matrix
+ * 
+ * Return     : void
+ * 
+ * Function   : 1 / (2 * pi * variance * variance)  *  exp(- (x * x + y * y) / (2 * variance * variance))
+ ******************************************************************************************/
+void gaussian(Mat<double>& mat, uint32_t radius, double variance)
+{
+    double K = 1.0 / 2 / 3.1415926 / variance / variance;
+    mat.resize(2*radius + 1, 2*radius + 1);
+    for(int64_t y = -(int64_t)radius; y <= radius; y++)
+    {
+        for(int64_t x = -(int64_t)radius; x <= radius; x++)
+        {
+            mat[radius + y][radius + x] = K * exp( - ((double)(x)*x + y*y) / (2*variance*variance));
+        }
+    }
+
+    double sum = mat.reduce<double>([](double& element){return element;});
+    mat.map([sum](double& element){element /= sum;});
+}
+
+
+
+/******************************************************************************************
+ * Name       : gaussianBlur
+ * 
+ * Input      : mat - source image
+ * 
+ *              radius - radius of convolution kernel
+ * 
+ *              variance - sigma of Gaussian distribution
+ * 
+ * Output     : mat - treated image
+ * 
+ * Return     : void
+ * 
+ * Function   : blur image by Gaussian distribution
+ ******************************************************************************************/
+void gaussianBlur(Image& mat, uint32_t radius, double variance)
+{
+    Mat<double> kernel;
+    gaussian(kernel, radius, variance);
+    convolution(mat, kernel);
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
