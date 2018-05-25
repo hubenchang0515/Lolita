@@ -1,5 +1,6 @@
 #include "tools.h"
-#include <math.h>
+#include <cmath>
+#include <functional>
 
 namespace lolita
 {
@@ -90,7 +91,7 @@ void binaryzation(Image& mat, uint8_t threshold)
 bool convolution(Image& mat, Mat<double>& kernel)
 {
     if( kernel.width() != kernel.height() ||    // not a square
-        kernel.width() & 1 != 1 ||              // length of side is not a odd number
+        (kernel.width() & 1) != 1 ||              // length of side is not a odd number
         kernel.width() > mat.width() ||         // kernel is bigger than mat
         kernel.width() > mat.height())
     {
@@ -178,7 +179,7 @@ void medianBlur(Image& mat, uint32_t radius)
             mat[y][x] = traverse(backup, y, x, radius,
                             [](std::vector<Pixel>& pixels)->Pixel
                             {
-                                std:sort(pixels.begin(), pixels.end());
+                                std::sort(pixels.begin(), pixels.end());
                                 return pixels[pixels.size()/2];
                             });
         }
@@ -310,8 +311,61 @@ void gaussianBlur(Image& mat, uint32_t radius, double variance)
 
 
 
+/******************************************************************************************
+ * Name       : resize
+ * 
+ * Input      : mat - source image
+ * 
+ *              width - width of new image
+ * 
+ *              height - height of new image
+ * 
+ * Output     : mat - treated image
+ * 
+ * Return     : void
+ * 
+ * Function   : resize a image
+ ******************************************************************************************/
+void resize(Image& mat, uint32_t width, uint32_t height)
+{
+    Image temp = mat;
+    mat.resize(width, height);
+    double kx = static_cast<double>(temp.width()) / mat.width();
+    double ky = static_cast<double>(temp.height()) / mat.height();
 
+    for(uint32_t y = 0; y < mat.height(); y++)
+    {
+        for(uint32_t x = 0; x < mat.width(); x++)
+        {
+            double x_real = x * kx;
+            double y_real = y * ky;
 
+            uint32_t x_src = (uint32_t)x_real;
+            uint32_t y_src = (uint32_t)y_real;
+
+            double x_offset = x_real - x_src;
+            double y_offset = y_real - y_src;
+
+            int x_another = x_src + 1 < temp.width() ? x_src + 1 : x_src - 1;
+            int y_another = y_src + 1 < temp.height() ? y_src + 1 : y_src - 1;
+
+            mat[y][x].red =   y_offset * x_offset * temp[y_src][x_src].red 
+                            + (1 - y_offset) * x_offset * temp[y_another][x_src].red
+                            + y_offset * (1 - x_offset) * temp[y_src][x_another].red
+                            + (1 - y_offset) * (1 - x_offset) *temp[y_another][x_another].red;
+
+            mat[y][x].green =   y_offset * x_offset * temp[y_src][x_src].green 
+                            + (1 - y_offset) * x_offset * temp[y_another][x_src].green
+                            + y_offset * (1 - x_offset) * temp[y_src][x_another].green
+                            + (1 - y_offset) * (1 - x_offset) *temp[y_another][x_another].green;
+
+            mat[y][x].blue =   y_offset * x_offset * temp[y_src][x_src].blue 
+                            + (1 - y_offset) * x_offset * temp[y_another][x_src].blue
+                            + y_offset * (1 - x_offset) * temp[y_src][x_another].blue
+                            + (1 - y_offset) * (1 - x_offset) *temp[y_another][x_another].blue;
+        }
+    }
+}
 
 
 
