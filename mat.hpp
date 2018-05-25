@@ -1,7 +1,8 @@
 #ifndef LOLITA_MAT_H
 #define LOLITA_MAT_H
 
-#include <stddef.h>
+#include <cstddef>
+#include <cstdint>
 #include <algorithm>
 #include <functional>
 #include <iostream>
