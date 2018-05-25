@@ -24,51 +24,166 @@ int main()
 ![blur](res/blur.bmp)
 ![edge](res/edge.bmp)
 
-## Gray Scale
+# API list
+---
 ```C++
+/******************************************************************************************
+ * Name       : grayScale
+ * 
+ * Input      : mat - source image
+ * 
+ * Output     : mat - gray-scale image
+ * 
+ * Return     : void
+ * 
+ * Function   : Convert a image to gray-scale image
+ ******************************************************************************************/
 void grayScale(Image& mat);
 ```
-Convert a image to be a gray-scale image.
-* ``mat`` - Image to be converted.
 
-## Binaryzation
+---
 ```C++
-void binaryzation(Image& mat, uint8_t threshold = 0);
+/******************************************************************************************
+ * Name       : binaryzation
+ * 
+ * Input      : mat - source gray-scale image
+ * 
+ *              threshold - pixel in range of [threshold, 255] will be set as 255
+ *                          pixel in range of [0, threshold)  will be set as 0
+ *                          if threshold is 0 , this function will calculate a threshold by 
+ *                          Kittler Algorithm
+ * 
+ * Output     : mat - binaryzation image
+ * 
+ * Return     : void
+ * 
+ * Function   : Convert a gray-scale image to binaryzation image
+ ******************************************************************************************/
+void binaryzation(Image& mat, uint8_t threshold);
 ```
-Convert a gray-scale image to be a binaryzation image.
-* ``mat`` - Image to be converted , must be a gray-scale image.
-* ``threshold`` - Threshold to convert image.
-  * Convert ``[0,threshold)`` to be black.
-  * Convert ``[threshold,255]`` to be white.
-  * If ``threshold`` is 0 , this function will calculate a threshold by ``Kittler`` .
 
-## Convolution
+---
 ```C++
-bool convolution(Image& mat, Mat<double>& kernel);
+/******************************************************************************************
+ * Name       : convolution
+ * 
+ * Input      : mat - source image
+ * 
+ *              kernel - a real matrix 
+ * 
+ * Output     : mat - convoluted image
+ * 
+ * Return     : bool
+ * 
+ * Function   : mat convolute kernel
+ ******************************************************************************************/
+bool convolution(Image& mat, Mat<double>& kernel)
 ```
-Filter image by convolution.
-* ``mat`` - Image to fileter
-* ``kernel`` -- convolution kernel
 
-## DetectEdge
+---
 ```C++
+/******************************************************************************************
+ * Name       : detectEdge
+ * 
+ * Input      : mat - source image
+ * 
+ * Output     : mat - treated image
+ * 
+ * Return     : void
+ * 
+ * Function   : edge detector
+ ******************************************************************************************/
 void detectEdge(Image& mat);
 ```
-Detect the dege of image.
-* ``mat`` - Image to detect edge.
 
-## Blur
+---
 ```C++
-void averageBlur(Image& mat, uint32_t radius);
+/******************************************************************************************
+ * Name       : averageBlur
+ * 
+ * Input      : mat - source image
+ * 
+ *              radius - radius of convolution kernel
+ * 
+ * Output     : mat - treated image
+ * 
+ * Return     : void
+ * 
+ * Function   : blur image by average
+ ******************************************************************************************/
+void averageBlur(Image& mat, uint32_t radius)
 ```
-Blur image by average.
-* ``mat`` - Image to blur.
-* ``radius`` - Radius of convolution kernel.
 
+---
 ```C++
+/******************************************************************************************
+ * Name       : medianBlur
+ * 
+ * Input      : mat - source image
+ * 
+ *              radius - radius of convolution kernel
+ * 
+ * Output     : mat - treated image
+ * 
+ * Return     : void
+ * 
+ * Function   : blur image by median value
+ ******************************************************************************************/
 void medianBlur(Image& mat, uint32_t radius);
 ```
-Blur image by median value.
-* ``mat`` - Image to blur.
-* ``radius`` - Radius of convolution kernel.
 
+---
+```C++
+/******************************************************************************************
+ * Name       : gaussianBlur
+ * 
+ * Input      : mat - source image
+ * 
+ *              radius - radius of convolution kernel
+ * 
+ *              variance - sigma of Gaussian distribution
+ * 
+ * Output     : mat - treated image
+ * 
+ * Return     : void
+ * 
+ * Function   : blur image by Gaussian distribution
+ ******************************************************************************************/
+void gaussianBlur(Image& mat, uint32_t radius, double variance);
+```
+
+---
+```C++
+/******************************************************************************************
+ * Name       : dilate
+ * 
+ * Input      : mat - source image
+ * 
+ *              radius - radius of convolution kernel
+ * 
+ * Output     : mat - treated image
+ * 
+ * Return     : void
+ * 
+ * Function   : dilate image by maximum value of area
+ ******************************************************************************************/
+void dilate(Image& mat, uint32_t radius);
+```
+
+---
+```C++
+/******************************************************************************************
+ * Name       : erode
+ * 
+ * Input      : mat - source image
+ * 
+ *              radius - radius of convolution kernel
+ * 
+ * Output     : mat - treated image
+ * 
+ * Return     : void
+ * 
+ * Function   : erode image by minimum value of area
+ ******************************************************************************************/
+void erode(Image& mat, uint32_t radius);
+```
