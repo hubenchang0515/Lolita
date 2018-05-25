@@ -11,6 +11,7 @@ Lolita is a Computer Vision library of C++
  - [x] BMP File I/O
  - [x] Image Convolution
  - [x] Average Blur and Median Blur
+ - [x] Gaussian Blur
  - [x] Edge detection
  - [x] Eroding and Dilating
  - [x] Image resize
