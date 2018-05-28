@@ -187,3 +187,24 @@ void dilate(Image& mat, uint32_t radius);
  ******************************************************************************************/
 void erode(Image& mat, uint32_t radius);
 ```
+
+
+---
+```C++
+/******************************************************************************************
+ * Name       : resize
+ * 
+ * Input      : mat - source image
+ * 
+ *              width - width of new image
+ * 
+ *              height - height of new image
+ * 
+ * Output     : mat - treated image
+ * 
+ * Return     : void
+ * 
+ * Function   : resize a image by bicubic interpolation
+ ******************************************************************************************/
+void bicubic(Image& mat, uint32_t width, uint32_t height);
+```

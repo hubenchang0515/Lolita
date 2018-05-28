@@ -9,7 +9,7 @@ namespace lolita
 /**[Private]***********************************************************************************************/
 static Pixel convolutionElement(Image& mat, uint32_t row, uint32_t column, Mat<double>& kernel);
 static Pixel traverse(Image& mat, uint32_t row, uint32_t column, uint32_t radius, std::function<Pixel(std::vector<Pixel>&)> callback);
-
+static double bicubicCoefficient(double offset);
 
 /******************************************************************************************
  * Name       : grayScale
@@ -309,8 +309,6 @@ void gaussianBlur(Image& mat, uint32_t radius, double variance)
 
 
 
-
-
 /******************************************************************************************
  * Name       : resize
  * 
@@ -363,6 +361,70 @@ void resize(Image& mat, uint32_t width, uint32_t height)
                             + (1 - y_offset) * x_offset * temp[y_another][x_src].blue
                             + y_offset * (1 - x_offset) * temp[y_src][x_another].blue
                             + (1 - y_offset) * (1 - x_offset) *temp[y_another][x_another].blue;
+        }
+    }
+}
+
+
+
+/******************************************************************************************
+ * Name       : resize
+ * 
+ * Input      : mat - source image
+ * 
+ *              width - width of new image
+ * 
+ *              height - height of new image
+ * 
+ * Output     : mat - treated image
+ * 
+ * Return     : void
+ * 
+ * Function   : resize a image by bicubic interpolation
+ ******************************************************************************************/
+void bicubic(Image& mat, uint32_t width, uint32_t height)
+{
+    Image temp = mat;
+    mat.resize(width, height);
+    double kx = static_cast<double>(temp.width()) / mat.width();
+    double ky = static_cast<double>(temp.height()) / mat.height();
+
+    for(uint32_t y = 0; y < mat.height(); y++)
+    {
+        for(uint32_t x = 0; x < mat.width(); x++)
+        {
+            double x_real = x * kx;
+            double y_real = y * ky;
+
+
+            /* find the 16 nearest pixel */
+            uint32_t x_begin, x_end;
+            uint32_t y_begin, y_end;
+
+            x_begin = x_real - 1 > 0 ? x_real - 1 : 0;
+            x_end   = x_real + 3 < temp.width() ? x_real + 3 : temp.width();
+
+            y_begin = y_real - 1 > 0 ? y_real - 1 : 0;
+            y_end   = y_real + 3 < temp.height() ? y_real + 3 : temp.height();
+
+            mat[y][x] = 0;
+            for(uint32_t i = y_begin; i < y_end; i++)
+            {
+                for(uint32_t j = x_begin; j < x_end; j++)
+                {
+                    double y_offset = i > y_real ? i - y_real : y_real - i;
+                    double x_offset = j > x_real ? j - x_real : x_real - j;
+                    double k = bicubicCoefficient(x_offset) * bicubicCoefficient(y_offset);
+                    mat[y][x].red = mat[y][x].red + k * temp[i][j].red;
+                    mat[y][x].green = mat[y][x].green + k * temp[i][j].green;
+                    mat[y][x].blue = mat[y][x].blue + k * temp[i][j].blue;
+
+                }
+            }
+
+            mat[y][x].red = mat[y][x].red < 0 ? 0 : mat[y][x].red > 255 ? 255 : mat[y][x].red;
+            mat[y][x].green = mat[y][x].green < 0 ? 0 : mat[y][x].green > 255 ? 255 : mat[y][x].green;
+            mat[y][x].blue = mat[y][x].blue < 0 ? 0 : mat[y][x].blue > 255 ? 255 : mat[y][x].blue;
         }
     }
 }
@@ -432,6 +494,21 @@ static Pixel traverse(Image& mat, uint32_t row, uint32_t column, uint32_t radius
     return callback(temp);
 }
 
-
+static double bicubicCoefficient(double offset)
+{
+    double a = -0.5;
+    if(offset <= 1)
+    {
+        return (a+2) * offset * offset * offset - (a+3) * offset * offset + 1;
+    }
+    else if(offset < 2)
+    {
+        return a * offset * offset * offset - 5*a * offset * offset + 8*a * offset - 4*a;
+    }
+    else
+    {
+        return 0;
+    }
+}
 
 }; // namespace lolita

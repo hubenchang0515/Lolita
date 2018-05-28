@@ -24,6 +24,7 @@ void gaussian(Mat<double>& mat, uint32_t radius, double variance);
 void gaussianBlur(Image& mat, uint32_t radius, double variance = 1);
 
 void resize(Image& mat, uint32_t width, uint32_t height);
+void bicubic(Image& mat, uint32_t width, uint32_t height)
 }; // namespace lolita
 
 #endif

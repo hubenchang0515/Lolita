@@ -1,4 +1,4 @@
-CXX= g++ -std=c++11 -fPIC -O3
+CXX= g++ -std=c++11 -fPIC -O3 -W -Wall
 
 none : 
 	@echo "Please do 'make {linux|mingw}'"
