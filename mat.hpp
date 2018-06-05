@@ -20,10 +20,15 @@ public:
 
     Mat(uint32_t width = 0, uint32_t height = 0);
 
-    uint32_t width();
-    uint32_t height();
+    uint32_t width() const;
+    uint32_t height() const;
 
     std::vector<ElemType>& operator [] (uint32_t raw)
+    {
+    	return mat[raw];
+    }
+
+    const std::vector<ElemType>& operator [] (uint32_t raw) const
     {
     	return mat[raw];
     }
@@ -72,13 +77,13 @@ Mat<ElemType>::Mat(uint32_t width, uint32_t height)
 }
 
 template<typename ElemType>
-uint32_t Mat<ElemType>::width()
+uint32_t Mat<ElemType>::width() const
 {
     return this->width_;
 }
 
 template<typename ElemType>
-uint32_t Mat<ElemType>::height()
+uint32_t Mat<ElemType>::height() const
 {
     return this->height_;
 }
@@ -116,9 +121,34 @@ void Mat<ElemType>::map(std::function<void(ElemType&)> callback)
 #include "pixel.h"
 namespace lolita
 {
+    using RgbImage = Mat<RgbPixel>;
+    using HsvImage = Mat<HsvPixel>;
+    using Image = RgbImage;
 
-    using Image = Mat<Pixel>;
+    static void convertRgb2Hsv(const RgbImage& src, HsvImage& dst)
+    {
+        dst.resize(src.width(), src.height());
+        for(uint32_t y = 0; y < src.height(); y++)
+        {
+            for(uint32_t x = 0; x < src.width(); x++)
+            {
+                dst[y][x] = rgb2hsv(src[y][x]);
+            }
+        }
+    }
 
+
+    static void convertHsv2Rgb(const HsvImage& src, RgbImage& dst)
+    {
+        dst.resize(src.width(), src.height());
+        for(uint32_t y = 0; y < src.height(); y++)
+        {
+            for(uint32_t x = 0; x < src.width(); x++)
+            {
+                dst[y][x] = hsv2rgb(src[y][x]);
+            }
+        }
+    }
 }; // namespace lolita
 
 

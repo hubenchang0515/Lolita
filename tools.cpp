@@ -7,8 +7,8 @@ namespace lolita
 
 
 /**[Private]***********************************************************************************************/
-static Pixel convolutionElement(Image& mat, uint32_t row, uint32_t column, Mat<double>& kernel);
-static Pixel traverse(Image& mat, uint32_t row, uint32_t column, uint32_t radius, std::function<Pixel(std::vector<Pixel>&)> callback);
+static RgbPixel convolutionElement(Image& mat, uint32_t row, uint32_t column, Mat<double>& kernel);
+static RgbPixel traverse(Image& mat, uint32_t row, uint32_t column, uint32_t radius, std::function<RgbPixel(std::vector<RgbPixel>&)> callback);
 static double bicubicCoefficient(double offset);
 
 /******************************************************************************************
@@ -24,7 +24,7 @@ static double bicubicCoefficient(double offset);
  ******************************************************************************************/
 void grayScale(Image& mat)
 {
-    mat.map([](Pixel& pix)
+    mat.map([](RgbPixel& pix)
     {
         pix.red = pix.green = pix.blue = pix.red*0.299 + pix.green*0.587 + pix.blue*0.114;
     });
@@ -37,8 +37,8 @@ void grayScale(Image& mat)
  * 
  * Input      : mat - source gray-scale image
  * 
- *              threshold - pixel in range of [threshold, 255] will be set as 255
- *                          pixel in range of [0, threshold)  will be set as 0
+ *              threshold - Rgbpixel in range of [threshold, 255] will be set as 255
+ *                          Rgbpixel in range of [0, threshold)  will be set as 0
  *                          if threshold is 0 , this function will calculate a threshold by 
  *                          Kittler Algorithm
  * 
@@ -68,7 +68,7 @@ void binaryzation(Image& mat, uint8_t threshold)
         threshold = sumGrayGrads / sumGrads;
     }
 
-    mat.map([threshold](Pixel& pix)
+    mat.map([threshold](RgbPixel& pix)
     {
         pix.red = pix.green = pix.blue = (pix.red >= threshold ? 0xff : 0);
     });
@@ -177,10 +177,10 @@ void medianBlur(Image& mat, uint32_t radius)
         for(uint32_t x = 0; x < mat.width(); x++)
         {
             mat[y][x] = traverse(backup, y, x, radius,
-                            [](std::vector<Pixel>& pixels)->Pixel
+                            [](std::vector<RgbPixel>& Rgbpixels)->RgbPixel
                             {
-                                std::sort(pixels.begin(), pixels.end());
-                                return pixels[pixels.size()/2];
+                                std::sort(Rgbpixels.begin(), Rgbpixels.end());
+                                return Rgbpixels[Rgbpixels.size()/2];
                             });
         }
     }
@@ -209,9 +209,9 @@ void erode(Image& mat, uint32_t radius)
         for(uint32_t x = 0; x < mat.width(); x++)
         {
             mat[y][x] = traverse(backup, y, x, radius,
-                            [](std::vector<Pixel>& pixels)->Pixel
+                            [](std::vector<RgbPixel>& Rgbpixels)->RgbPixel
                             {
-                                return *std::min_element(pixels.begin(), pixels.end());
+                                return *std::min_element(Rgbpixels.begin(), Rgbpixels.end());
                             });
         }
     }
@@ -240,9 +240,9 @@ void dilate(Image& mat, uint32_t radius)
         for(uint32_t x = 0; x < mat.width(); x++)
         {
             mat[y][x] = traverse(backup, y, x, radius,
-                            [](std::vector<Pixel>& pixels)->Pixel
+                            [](std::vector<RgbPixel>& Rgbpixels)->RgbPixel
                             {
-                                return *std::max_element(pixels.begin(), pixels.end());
+                                return *std::max_element(Rgbpixels.begin(), Rgbpixels.end());
                             });
         }
     }
@@ -397,7 +397,7 @@ void bicubic(Image& mat, uint32_t width, uint32_t height)
             double y_real = y * ky;
 
 
-            /* find the 16 nearest pixel */
+            /* find the 16 nearest Rgbpixel */
             uint32_t x_begin, x_end;
             uint32_t y_begin, y_end;
 
@@ -439,9 +439,9 @@ void bicubic(Image& mat, uint32_t width, uint32_t height)
 
 
 /**[Private]***********************************************************************************************/
-static Pixel convolutionElement(Image& mat, uint32_t row, uint32_t column, Mat<double>& kernel)
+static RgbPixel convolutionElement(Image& mat, uint32_t row, uint32_t column, Mat<double>& kernel)
 {
-    Pixel result = 0;
+    RgbPixel result = 0;
     uint32_t radius = (kernel.width() - 1 ) / 2;
 
     uint32_t row_begin = (row > radius) ? (row - radius) : 0;
@@ -473,9 +473,9 @@ static Pixel convolutionElement(Image& mat, uint32_t row, uint32_t column, Mat<d
 }
 
 
-static Pixel traverse(Image& mat, uint32_t row, uint32_t column, uint32_t radius, std::function<Pixel(std::vector<Pixel>&)> callback)
+static RgbPixel traverse(Image& mat, uint32_t row, uint32_t column, uint32_t radius, std::function<RgbPixel(std::vector<RgbPixel>&)> callback)
 {
-    std::vector<Pixel> temp;
+    std::vector<RgbPixel> temp;
     
     uint32_t row_begin = (row > radius) ? (row - radius) : 0;
     uint32_t row_end   = (mat.height() >= radius + row + 1) ? (radius + row + 1) : mat.height();
