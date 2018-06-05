@@ -125,7 +125,7 @@ namespace lolita
     using HsvImage = Mat<HsvPixel>;
     using Image = RgbImage;
 
-    static void convertRgb2Hsv(const RgbImage& src, HsvImage& dst)
+    inline void convertRgb2Hsv(const RgbImage& src, HsvImage& dst)
     {
         dst.resize(src.width(), src.height());
         for(uint32_t y = 0; y < src.height(); y++)
@@ -138,7 +138,7 @@ namespace lolita
     }
 
 
-    static void convertHsv2Rgb(const HsvImage& src, RgbImage& dst)
+    inline void convertHsv2Rgb(const HsvImage& src, RgbImage& dst)
     {
         dst.resize(src.width(), src.height());
         for(uint32_t y = 0; y < src.height(); y++)
