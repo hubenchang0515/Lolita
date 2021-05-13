@@ -6,111 +6,136 @@
 #include <algorithm>
 #include <functional>
 #include <iostream>
+#include <cstdlib>
+#include <cstring>
 
 namespace lolita
 {
 
 template<typename ElemType>
+class MatRowView
+{
+public:
+    ~MatRowView() = default;
+    MatRowView(const MatRowView&) = default;
+    MatRowView(MatRowView&&) = default;
+
+    explicit MatRowView(ElemType* data):
+        data_(data)
+    {
+
+    }
+
+    ElemType& operator [] (uint32_t index)
+    {
+        return *(data_ + index);
+    }
+
+    const ElemType& operator [] (uint32_t index) const
+    {
+        return *(data_ + index);
+    }
+
+private:
+    ElemType* data_;
+};
+
+template<typename ElemType>
 class Mat
 {
 public:
-    ~Mat() = default;
-    Mat(const Mat&) = default;
-    Mat(Mat&&) = default;
-
-    Mat(uint32_t width = 0, uint32_t height = 0);
-
-    uint32_t width() const;
-    uint32_t height() const;
-
-    std::vector<ElemType>& operator [] (uint32_t raw)
+    ~Mat()
     {
-    	return mat[raw];
+        if(data_ != nullptr)
+        {
+            free(data_);
+            data_ = nullptr;
+        }
     }
 
-    const std::vector<ElemType>& operator [] (uint32_t raw) const
+    Mat(uint32_t width = 0, uint32_t height = 0)
     {
-    	return mat[raw];
+        this->width_  = width;
+        this->height_ = height;
+        void* data = malloc(sizeof(ElemType) * width * height);
+        this->data_ = reinterpret_cast<ElemType*>(data);
     }
 
-    void resize(uint32_t width, uint32_t height);
+    Mat(const Mat& another)
+    {
+        size_t n = sizeof(ElemType) * another.width_ * another.height_;
+        void* data = malloc(n);
+        if(data == nullptr)
+        {
+            throw std::bad_alloc();
+        }
+        memcpy(data, another.data_, n);
+        this->data_ = reinterpret_cast<ElemType*>(data);
+        this->width_ = another.width_;
+        this->height_ = another.height_;
+    }
 
-    void map(std::function<void(ElemType&)> callback);
+    Mat(Mat&& another)
+    {
+        data_ = another.data_;
+        this->width_ = another.width_;
+        this->height_ = another.height_;
+        another.data_ = nullptr;
+    }
+
+    uint32_t width() const
+    {
+        return width_;
+    }
+
+    uint32_t height() const
+    {
+        return height_;
+    }
+
+    MatRowView<ElemType> operator [] (uint32_t raw)
+    {
+    	return MatRowView<ElemType>(data_ + raw * width_);
+    }
+
+    const MatRowView<ElemType> operator [] (uint32_t raw) const
+    {
+    	return MatRowView<ElemType>(data_ + raw * width_);
+    }
+
+    void resize(uint32_t width, uint32_t height)
+    {
+        this->width_  = width;
+        this->height_ = height;
+        void* data = reinterpret_cast<void*>(data_);
+        data = realloc(data, sizeof(ElemType) * width * height);
+        this->data_ = reinterpret_cast<ElemType*>(data);
+    }
+
+    void map(std::function<void(ElemType&)> callback)
+    {
+        for(uint32_t i = 0; i < width_ * height_; i++)
+        {
+            callback(*(data_ + i)); 
+        }
+    }
     
     template<typename T>
     T reduce(std::function<T(ElemType&)> callback)
     {
-        T result = callback(mat[0][0]);
-        for(uint32_t i = 1; i < width_; i++)
+        T n = 0;
+        for(uint32_t i = 0; i < width_ * height_; i++)
         {
-            result += callback(mat[0][i]);
+            n += callback(*(data_ + i)); 
         }
-
-        for(uint32_t raw = 1; raw < height_; raw++)
-        {
-            for(uint32_t i = 0; i < width_; i++)
-            {
-                result += callback(mat[raw][i]);
-            }
-        }
-        
-        return result;
+        return n;
     }
 
 private:
-    std::vector< std::vector<ElemType> > mat;
+    ElemType* data_;
     uint32_t width_;
     uint32_t height_;
 };
-
-template<typename ElemType>
-Mat<ElemType>::Mat(uint32_t width, uint32_t height)
-{
-    this->width_  = width;
-    this->height_ = height;
-    this->mat.resize(height);
-    for(auto& raw : mat)
-    {
-        raw.resize(width);
-    }
-
-}
-
-template<typename ElemType>
-uint32_t Mat<ElemType>::width() const
-{
-    return this->width_;
-}
-
-template<typename ElemType>
-uint32_t Mat<ElemType>::height() const
-{
-    return this->height_;
-}
-
-template<typename ElemType>
-void Mat<ElemType>::resize(uint32_t width, uint32_t height)
-{
-    this->width_  = width;
-    this->height_ = height;
-    this->mat.resize(height);
-    for(auto& raw : mat)
-    {
-        raw.resize(width);
-    }
-}
-
-template<typename ElemType>
-void Mat<ElemType>::map(std::function<void(ElemType&)> callback)
-{
-    for(auto& raw : mat)
-    {
-        for(ElemType& pix : raw)
-        {
-            callback(pix); 
-        }
-    }
-}
 
 /************************************************************************************************/
 

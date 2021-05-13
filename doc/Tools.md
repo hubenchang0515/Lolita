@@ -3,7 +3,7 @@ Belong to ``namespace lolita`` , some basic functions.
 
 # Demo
 ```C++
-#include "include/lolita.h"
+#include <lolita/lolita.h>
 #include <iostream>
 #include <cstdio>
 

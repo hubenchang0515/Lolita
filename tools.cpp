@@ -1,6 +1,7 @@
 #include "tools.h"
 #include <cmath>
 #include <functional>
+#include <vector>
 
 namespace lolita
 {
@@ -97,7 +98,6 @@ bool convolution(Image& mat, Mat<double>& kernel)
     {
         return false;
     }
-
 
     Image backup = mat;
 
@@ -467,7 +467,7 @@ static RgbPixel convolutionElement(Image& mat, uint32_t row, uint32_t column, Ma
     result.red = red < 0 ? 0 : red > 255 ? 255 : red;
     result.green = green < 0 ? 0 : green > 255 ? 255 : green;
     result.blue = blue < 0 ? 0 : blue > 255 ? 255 : blue;
-    //std::cout << red << " " << green << " " << blue << std::endl;
+    // std::cout << red << " " << green << " " << blue << std::endl;
 
     return result;
 }
