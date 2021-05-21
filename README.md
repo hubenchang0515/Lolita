@@ -1,54 +1,36 @@
 # Lolita
-Lolita is a Computer Vision library of C++
 
-# *SUSPENDED*
+**Lolita** is a header-only Computer Vision template library of C++
 
-## Warning
-* Need C++11
-* Doesn't Ready
+## Install
 
-## TODO List
- - [x] Pixel Class
- - [x] Matrix and Image Class
- - [x] BMP File I/O
- - [x] Image Convolution
- - [x] Average Blur and Median Blur
- - [x] Gaussian Blur
- - [x] Edge detection
- - [x] Eroding and Dilating
- - [x] Image resize
- - [ ] Hough Lines and Hough Circles
- - [ ] Remapping
- - [ ] Affine Transformation
- - [ ] DFT and FFT
+`lolite.hpp` is the only source file. 
 
-## Demo
-```C++
-#include <lolita/lolita.h>
+You can copy it into your project directly.
+
+Or install it into `/usr/local/include` by `make install`.
+
+## Dependency
+
+* C++11
+
+> **Lolita** does't depends any library, except C++ standard library.
+
+## Usage
+
+Demo:  
+
+```cpp
+#include <lolita.hpp>
 
 using namespace lolita;
 
-int main()
+int main(void)
 {
-	Image mat;
-	Bmp::read(mat, "24.bmp");
-	Bmp::write(mat, "16.bmp", 16);
-	grayScale(mat);
-	Bmp::write(mat, "8.bmp", 8);
-	binaryzation(mat);
-	Bmp::write(mat, "1.bmp", 1);
+	Mat<Pixel::BGR24> in = BMP::read("in.bmp");
+	Mat<Pixel::GrayScale> out;
+	MatConvert::GRAY(out, in);
+	BMP::write(out, "out.bmp");
 	return 0;
 }
 ```
-
-![24](doc/res/24.bmp)
-![16](doc/res/16.bmp)
-![8](doc/res/8.bmp)
-![1](doc/res/1.bmp)
-
-
-## Document
-* [RGBA Pixel](doc/Pixel.md)
-* [Matrix and Image](doc/Mat.md)  
-* [Bmp File IO](doc/Bmp.md)  
-* [Basic Tools](doc/Tools.md)

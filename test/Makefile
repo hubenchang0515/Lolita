@@ -7,8 +7,8 @@ test.out: test.o
 	g++ -o test.out test.o
 
 test.o: test.cpp ../src/lolita.hpp
-	g++ -c test.cpp -std=c++11 -I../src -W -Wall -Wextra
+	g++ -c test.cpp -std=c++11 -I../src -W -Wall -Wextra -O3
 
 
 clean:
-	rm -f test.o test.out
+	$(RM) test.o test.out

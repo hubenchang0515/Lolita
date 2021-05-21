@@ -21,28 +21,43 @@ do                                                                              
 
 void testColorSpace()
 {
+    uint64_t gray = ColorSpace::ID("Y");
     uint64_t rgb = ColorSpace::ID("RGB");
     uint64_t rgba = ColorSpace::ID("RGBA");
     uint64_t rgbx = ColorSpace::ID("RGBX");
     
-    ASSERT(ColorSpace::CS_LENGTH(rgb) == 3);
-    ASSERT(ColorSpace::CS_LENGTH(rgba) == 4);
-    ASSERT(ColorSpace::CS_LENGTH(rgbx) == 4);
+    ASSERT(ColorSpace::_length(gray) == 1);
+    ASSERT(ColorSpace::_length(rgb) == 3);
+    ASSERT(ColorSpace::_length(rgba) == 4);
+    ASSERT(ColorSpace::_length(rgbx) == 4);
 
-    ASSERT(ColorSpace::CS_INDEX(rgb, 'R') == 0);
-    ASSERT(ColorSpace::CS_INDEX(rgb, 'G') == 1);
-    ASSERT(ColorSpace::CS_INDEX(rgb, 'B') == 2);
+    ASSERT(ColorSpace::_index(rgb, 'R') == 0);
+    ASSERT(ColorSpace::_index(rgb, 'G') == 1);
+    ASSERT(ColorSpace::_index(rgb, 'B') == 2);
 
-    ASSERT(ColorSpace::CS_INDEX(rgba, 'R') == 0);
-    ASSERT(ColorSpace::CS_INDEX(rgba, 'G') == 1);
-    ASSERT(ColorSpace::CS_INDEX(rgba, 'B') == 2);
-    ASSERT(ColorSpace::CS_INDEX(rgba, 'A') == 3);
+    ASSERT(ColorSpace::_index(rgba, 'R') == 0);
+    ASSERT(ColorSpace::_index(rgba, 'G') == 1);
+    ASSERT(ColorSpace::_index(rgba, 'B') == 2);
+    ASSERT(ColorSpace::_index(rgba, 'A') == 3);
 
-    ASSERT(ColorSpace::CS_INDEX(rgbx, 'R') == 0);
-    ASSERT(ColorSpace::CS_INDEX(rgbx, 'G') == 1);
-    ASSERT(ColorSpace::CS_INDEX(rgbx, 'B') == 2);
-    ASSERT(ColorSpace::CS_INDEX(rgbx, 'X') == 3);
-    ASSERT(ColorSpace::CS_INDEX(rgbx, 'A') == SIZE_MAX);
+    ASSERT(ColorSpace::_index(rgbx, 'R') == 0);
+    ASSERT(ColorSpace::_index(rgbx, 'G') == 1);
+    ASSERT(ColorSpace::_index(rgbx, 'B') == 2);
+    ASSERT(ColorSpace::_index(rgbx, 'X') == 3);
+    ASSERT(ColorSpace::_index(rgbx, 'A') == SIZE_MAX);
+
+    ASSERT(ColorSpace::compatible(gray, "Y"));
+    ASSERT(ColorSpace::compatible(rgb, "RGB"));
+    ASSERT(ColorSpace::compatible(rgba, "RGB"));
+    ASSERT(ColorSpace::compatible(rgbx, "RGB"));
+
+    ASSERT(!ColorSpace::compatible(gray, "RGB"));
+    ASSERT(!ColorSpace::compatible(rgb, "Y"));
+    ASSERT(!ColorSpace::compatible(rgba, "Y"));
+    ASSERT(!ColorSpace::compatible(rgbx, "Y"));
+
+    ASSERT(ColorSpace::compatible(Pixel::RGBA32::id, "RGB"));
+    ASSERT(!ColorSpace::compatible(Pixel::RGBA32::id, "Y"));
 }
 
 void testPixel()
@@ -67,7 +82,7 @@ void testPixel()
     PixelConvert::RGB(p2, p1);
     Pixel::GrayScale p3;
     PixelConvert::GRAY(p3, p2);
-    ASSERT(p3.grayScale() == (95*299 + 05*587 + 15*114 + 500)/1000);
+    // ASSERT(p3.grayScale() == (95*299 + 05*587 + 15*114 + 500)/1000);
 }
 
 void testUtils()
@@ -117,7 +132,7 @@ void testBMP()
     BMP::write(out3, "out3.bmp");
     BMP::write(out4, "out4.bmp");
     BMP::write(out5, "out5.bmp");
-    BMP::write(out6, "out6.bmp", 8);
+    BMP::write(out6, "out6.bmp");
 }
 
 int main()

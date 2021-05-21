@@ -3,18 +3,18 @@
 help: 
 	@echo "Lolita is a header-only libraray, needn't build."
 	@echo "help:"
-	@echo "\tmake install - install this libraray"
-	@echo "\tmake uninstall - uninstall this libraray"
-	@echo "\tmake test - run the unit test"
-	@echo "\tmake clean - clean the test build files"
+	@echo "  make install - install this libraray"
+	@echo "  make uninstall - uninstall this libraray"
+	@echo "  make test - run the unit test"
+	@echo "  make clean - clean the test build files"
 
 all: test
 
 test:
-	make -C ./test
+	$(MAKE) -C ./test
 
 clean:
-	make -C ./test clean
+	$(MAKE) -C ./test clean
 
 install:
 	install -m0644 ./src/lolita.hpp /usr/local/include

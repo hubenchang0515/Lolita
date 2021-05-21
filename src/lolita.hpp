@@ -37,6 +37,15 @@ namespace lolita
         {
             return (align - (len % align)) % align;
         }
+
+        /************************************************************
+        * @brief force the compiler to optimize a constexpr in condition
+        ************************************************************/
+        template<bool n>
+        constexpr bool is()
+        {
+            return n;
+        }
     }; // ::lolita::utils
 
     namespace _private
@@ -106,11 +115,34 @@ namespace lolita
         {
             return n == 0 ? len : _uint64StringLength(n >> 8, len+1);
         }
+
+        /************************************************************
+        * @brief check does the combined uint64_t value have the char
+        * @param[in] n  a combined uint64_t value
+        * @param[in] ch the char
+        * @return does have
+        ************************************************************/
+        constexpr static inline size_t _uint64StringHas(uint64_t n, char ch)
+        {
+            return (n & 0xff) == static_cast<uint64_t>(ch) ? true : (n == 0 ? false : _uint64StringHas(n >> 8, ch));
+        }
+
+        /************************************************************
+        * @brief check does the combined uint64_t value have all the char in a string
+        * @param[in] n  a combined uint64_t value
+        * @param[in] str the string
+        * @return does have
+        ************************************************************/
+        constexpr static inline size_t _uint64StringHas(uint64_t n, const char* str)
+        {
+            return *str == 0 ? true : (!_uint64StringHas(n, *str) ? false : _uint64StringHas(n, str+1));
+        }
     }; // namespace ::lolita::_private
 
     namespace ColorSpace
     {
-        using ColorSpaceId = uint64_t;
+        /* NOTEE: These color names must have to be unique */
+    
         /* Placeholder */
         constexpr const char PLACEHOLDER = 'X';
 
@@ -139,12 +171,23 @@ namespace lolita
         }
 
         /************************************************************
+        * @brief check is the color space compatible
+        * @param[in] id the color space
+        * @param[in] str a C-style string
+        * @return is similiar
+        ************************************************************/
+        constexpr static inline uint64_t compatible(uint64_t id, const char* str)
+        {
+            return _private::_uint64StringHas(id, str);
+        }
+
+        /************************************************************
         * @brief get the color index while compiling
         * @param[in] n  color space ID
         * @param[in] ch color
         * @return the color index
         ************************************************************/
-        constexpr static inline size_t CS_INDEX(uint64_t n, char ch)
+        constexpr static inline size_t _index(uint64_t n, char ch)
         {
             return _private::_findCharInUint64(n, ch);
         }
@@ -154,7 +197,7 @@ namespace lolita
         * @param[in] n  color space ID
         * @return the length
         ************************************************************/
-        constexpr static inline size_t CS_LENGTH(uint64_t n)
+        constexpr static inline size_t _length(uint64_t n)
         {
             return _private::_uint64StringLength(n);
         }
@@ -168,6 +211,9 @@ namespace lolita
         class BasicPixel
         {
         public:
+            constexpr static const uint64_t id = format;
+            constexpr static const size_t length = ColorSpace::_length(format);
+
             ~BasicPixel() = default;
             BasicPixel(const BasicPixel&) = default;
             BasicPixel(BasicPixel&&) = default;
@@ -204,7 +250,7 @@ namespace lolita
             ************************************************************/
             uint8_t grayScale() const
             {
-                return m_get(ColorSpace::GRAYSCALE);
+                return m_get<ColorSpace::GRAYSCALE>();
             }
 
             /************************************************************
@@ -213,7 +259,7 @@ namespace lolita
             ************************************************************/
             void setGrayScale(uint8_t v)
             {
-                m_set(ColorSpace::GRAYSCALE, v);
+                m_set<ColorSpace::GRAYSCALE>(v);
             }
 
             /************************************************************
@@ -222,7 +268,7 @@ namespace lolita
             ************************************************************/
             uint8_t red() const
             {
-                return m_get(ColorSpace::RED);
+                return m_get<ColorSpace::RED>();
             }
 
             /************************************************************
@@ -231,7 +277,7 @@ namespace lolita
             ************************************************************/
             uint8_t green() const
             {
-                return m_get(ColorSpace::GREEN);
+                return m_get<ColorSpace::GREEN>();
             }
 
             /************************************************************
@@ -240,7 +286,7 @@ namespace lolita
             ************************************************************/
             uint8_t blue() const
             {
-                return m_get(ColorSpace::BLUE);
+                return m_get<ColorSpace::BLUE>();
             }
 
             /************************************************************
@@ -249,7 +295,7 @@ namespace lolita
             ************************************************************/
             uint8_t alpha() const
             {
-                return m_get(ColorSpace::ALPHA);
+                return m_get<ColorSpace::ALPHA>();
             }
 
             /************************************************************
@@ -258,7 +304,7 @@ namespace lolita
             ************************************************************/
             void setRed(uint8_t v)
             {
-                m_set(ColorSpace::RED, v);
+                m_set<ColorSpace::RED>(v);
             }
 
             /************************************************************
@@ -267,7 +313,7 @@ namespace lolita
             ************************************************************/
             void setGreen(uint8_t v)
             {
-                m_set(ColorSpace::GREEN, v);
+                m_set<ColorSpace::GREEN>(v);
             }
 
             /************************************************************
@@ -276,7 +322,7 @@ namespace lolita
             ************************************************************/
             void setBlue(uint8_t v)
             {
-                m_set(ColorSpace::BLUE, v);
+                m_set<ColorSpace::BLUE>(v);
             }
 
             /************************************************************
@@ -285,7 +331,7 @@ namespace lolita
             ************************************************************/
             void setAlpha(uint8_t v)
             {
-                m_set(ColorSpace::ALPHA, v);
+                m_set<ColorSpace::ALPHA>(v);
             }
 
             /************************************************************
@@ -294,7 +340,7 @@ namespace lolita
             ************************************************************/
             uint8_t hue() const
             {
-                return m_get(ColorSpace::HUE);
+                return m_get<ColorSpace::HUE>();
             }
 
             /************************************************************
@@ -303,7 +349,7 @@ namespace lolita
             ************************************************************/
             uint8_t saturation() const
             {
-                return m_get(ColorSpace::SATURATION);
+                return m_get<ColorSpace::SATURATION>();
             }
 
             /************************************************************
@@ -312,7 +358,7 @@ namespace lolita
             ************************************************************/
             uint8_t lightness() const
             {
-                return m_get(ColorSpace::LIGHTNESS);
+                return m_get<ColorSpace::LIGHTNESS>();
             }
 
             /************************************************************
@@ -321,7 +367,7 @@ namespace lolita
             ************************************************************/
             void setHue(uint8_t v)
             {
-                m_set(ColorSpace::HUE, v);
+                m_set<ColorSpace::HUE>(v);
             }
 
             /************************************************************
@@ -330,7 +376,7 @@ namespace lolita
             ************************************************************/
             void setSaturation(uint8_t v)
             {
-                m_set(ColorSpace::SATURATION, v);
+                m_set<ColorSpace::SATURATION>(v);
             }
 
             /************************************************************
@@ -339,26 +385,28 @@ namespace lolita
             ************************************************************/
             void setLightness(uint8_t v)
             {
-                m_set(ColorSpace::LIGHTNESS, v);
+                m_set<ColorSpace::LIGHTNESS>(v);
             }
             
 
         private:
-            static const size_t length = ColorSpace::CS_LENGTH(format);
-
-            uint8_t m_data[ColorSpace::CS_LENGTH(format)];
+            uint8_t m_data[ColorSpace::_length(format)];
             
             /************************************************************
             * @brief get a color component value
             * @param[in] color the color component name
             * @return the color component value
             ************************************************************/
-            uint8_t m_get(char color) const
+            template<char color>
+            uint8_t m_get() const
             {
                 static char message[256];
-                size_t i = ColorSpace::CS_INDEX(format, color);
+                constexpr size_t i = ColorSpace::_index(format, color);
                 if(i >= length)
                 {
+                    // NOTE: Do not implement any logic by catching this exception.
+                    //       That will reduce the performance very much.
+                    //       Because this exception will throw very many times in matrix
                     sprintf(message, "the pixel does't have the %c color", color);
                     throw std::out_of_range(message);
                 }
@@ -370,12 +418,16 @@ namespace lolita
             * @param[in] color the color component name
             * @param[in] v the color component value
             ************************************************************/
-            void m_set(char color, uint8_t v)
+            template<char color>
+            void m_set(uint8_t v)
             {
                 static char message[256];
-                size_t i = ColorSpace::CS_INDEX(format, color);
+                constexpr size_t i = ColorSpace::_index(format, color);
                 if(i >= length)
                 {
+                    // NOTE: Do not implement any logic by catching this exception.
+                    //       That will reduce the performance very much.
+                    //       Because this exception will throw very many times in matrix
                     sprintf(message, "the pixel does't have the %c color", color);
                     throw std::out_of_range(message);
                 }
@@ -421,6 +473,11 @@ namespace lolita
         using ABGR32 = BasicPixel<ColorSpace::ID("ABGR")>;
 
         using HSL24 = BasicPixel<ColorSpace::ID("HSL")>;
+        // using HLS24 = BasicPixel<ColorSpace::ID("HLS")>;
+        // using SHL24 = BasicPixel<ColorSpace::ID("SHL")>;
+        // using SLH24 = BasicPixel<ColorSpace::ID("SLH")>;
+        // using LHS24 = BasicPixel<ColorSpace::ID("LHS")>;
+        // using LSH24 = BasicPixel<ColorSpace::ID("LSH")>;
 
         
         class Binary
@@ -529,7 +586,7 @@ namespace lolita
         * @brief get if the matrix valid
         * @return is valid
         ************************************************************/
-        bool valid()
+        bool valid() const
         {
             return m_data != nullptr;
         }
@@ -815,23 +872,20 @@ namespace lolita
         template<typename GrayPixel, typename AnyPixel>
         bool GRAY(GrayPixel& out, const AnyPixel& in)
         {
-            // RGB or RGBA
-            try
+            // RGB(A)
+            if(utils::is<ColorSpace::compatible(AnyPixel::id, "RGB")>())
             {
-                out.setGrayScale((in.red()*299 + in.green()*587 + in.blue()*114 + 500) / 1000);
+                // out.setGrayScale((in.red()*299 + in.green()*587 + in.blue()*114 + 500) / 1000);
+                out.setGrayScale(0xff);
                 return true;
             }
-            catch(std::out_of_range& e)
-            {}
 
             // gray scale
-            try
+            if(utils::is<ColorSpace::compatible(AnyPixel::id, "Y")>())
             {
                 out.setGrayScale(in.grayScale());
                 return true;
             }
-            catch(std::out_of_range& e)
-            {}
 
             return false;
         }
@@ -845,27 +899,24 @@ namespace lolita
         template<typename RGBPixel, typename AnyPixel>
         bool RGB(RGBPixel& out, const AnyPixel& in)
         {
-            // RGB or RGBA
-            try
+            // RGB(A)
+            if(utils::is<ColorSpace::compatible(AnyPixel::id, "RGB")>())
             {
+                
                 out.setRed(in.red());
                 out.setGreen(in.green());
                 out.setBlue(in.blue());
                 return true;
             }
-            catch (std::out_of_range& e)
-            {}
 
-            // GrayScale
-            try
+            // gray scale
+            if(utils::is<ColorSpace::compatible(AnyPixel::id, "Y")>())
             {
                 out.setRed(in.grayScale());
                 out.setGreen(in.grayScale());
                 out.setBlue(in.grayScale());
                 return true;
             }
-            catch(std::out_of_range& e)
-            {}
 
             return false;
         }
@@ -880,41 +931,34 @@ namespace lolita
         bool RGBA(RGBAPixel& out, const AnyPixel& in)
         {
             // RGBA
-            try
+            if(utils::is<ColorSpace::compatible(AnyPixel::id, "RGBA")>())
             {
                 out.setRed(in.red());
                 out.setGreen(in.green());
                 out.setBlue(in.blue());
                 out.setAlpha(in.alpha());
                 return true;
-            } 
-            catch(std::out_of_range& e)
-            {}
+            }
 
             // RGB
-            try
+            if(utils::is<ColorSpace::compatible(AnyPixel::id, "RGB")>())
             {
                 out.setRed(in.red());
                 out.setGreen(in.green());
                 out.setBlue(in.blue());
                 out.setAlpha(0);
                 return true;
-            } 
-            catch(std::out_of_range& e)
-            {}
+            }
 
             // geay scale
-            try
+            if(utils::is<ColorSpace::compatible(AnyPixel::id, "Y")>())
             {
                 out.setRed(in.grayScale());
                 out.setGreen(in.grayScale());
                 out.setBlue(in.grayScale());
                 out.setAlpha(0);
                 return true;
-            } 
-            catch(std::out_of_range& e)
-            {}
-
+            }
 
             return false;
         }
@@ -981,6 +1025,13 @@ namespace lolita
 
     namespace BMP
     {
+        enum class Format : int
+        {
+            Bit24,
+            Bit16,
+            Palette,
+        };
+
         #pragma pack(push)
         #pragma pack(1)
 
@@ -1108,6 +1159,22 @@ namespace lolita
             }
 
             /************************************************************
+            * @brief write a 24bit BMP image
+            * @param[in] image the image matrix
+            * @param[in] file the BMP file name
+            * @return is success
+            ************************************************************/
+            template<typename AnyPixel>
+            static inline bool write24(const Mat<AnyPixel>& image, const char* file)
+            {
+                Mat<Pixel::BGR24> out;
+                MatConvert::RGB(out, image, true);
+                out.setRowPadding(utils::padding(3 * out.width(), 4));
+                write24(out, file);
+                return true;
+            }
+
+            /************************************************************
             * @brief generate RGB palettes
             * @param[in] image the image matrix
             * @param[out] out the index matrix
@@ -1217,34 +1284,18 @@ namespace lolita
         * @param[in] file the file path
         * @return is success
         ************************************************************/
-        static inline bool write(const Mat<Pixel::BGR24>& image, const char* file, size_t bits=24)
+        template<typename AnyPixel>
+        static inline bool write(const Mat<AnyPixel>& image, const char* file, size_t bits=24)
         {
+            if(!image.valid() || file == nullptr)
+            {
+                return false;
+            }
+
             switch (bits)
             {
             case 24:
                 return _BMP_private::write24(image, file);
-                break;
-            
-            default:
-                return false;
-            }
-        }
-
-        /************************************************************
-        * @brief write a BMP image
-        * @param[in] image the image matrix
-        * @param[in] file the file path
-        * @return is success
-        ************************************************************/
-        template<typename RBGPixel>
-        static inline bool write(const Mat<RBGPixel>& image, const char* file, size_t bits=24)
-        {
-            Mat<Pixel::BGR24> out;
-            MatConvert::RGB(out, image);
-            switch (bits)
-            {
-            case 24:
-                return _BMP_private::write24(out, file);
 
             case 16:
                 return false;
@@ -1253,7 +1304,7 @@ namespace lolita
             case 4:
             case 2:
             case 1:
-                return _BMP_private::writeWithPalette(out, file);
+                // return _BMP_private::writeWithPalette(image, file);
             
             default:
                 return false;
