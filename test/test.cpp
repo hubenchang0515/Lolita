@@ -82,7 +82,7 @@ void testPixel()
     PixelConvert::RGB(p2, p1);
     Pixel::GrayScale p3;
     PixelConvert::GRAY(p3, p2);
-    // ASSERT(p3.grayScale() == (95*299 + 05*587 + 15*114 + 500)/1000);
+    ASSERT(p3.grayScale() == (95*299 + 05*587 + 15*114 + 500)/1000);
 }
 
 void testUtils()
@@ -114,7 +114,6 @@ void testBMP()
     ASSERT(sizeof(BMP::RGBPalette) == 4);
 
     Mat<Pixel::BGR24> source = BMP::read("input.bmp");
-    BMP::write(source, "out.bmp");
     Mat<Pixel::RGB24> out1;
     Mat<Pixel::BGR24> out2;
     Mat<Pixel::GRB24> out3;
@@ -134,8 +133,10 @@ void testBMP()
     BMP::write(out5, "out5.bmp");
     BMP::write(out6, "out6.bmp", BMP::Format::Palette);
 
-    Mat<Pixel::Binary> bin{200, 200};
-    BMP::write(source, "bin.bmp", BMP::Format::Binary);
+    Mat<Pixel::Binary> bin;
+    MatConvert::BINARY(bin, source, 200);
+    BMP::write(source, "bin0.bmp", BMP::Format::Binary, BMP::RGBPalette(0x9966ff), BMP::RGBPalette(0xffffff));
+    BMP::write(bin, "bin1.bmp", BMP::Format::Binary, BMP::RGBPalette(0x9966ff), BMP::RGBPalette(0xffffff));
 
     Mat<Pixel::BGR24> color{300, 300};
     color.map([](Pixel::BGR24& pix, size_t row, size_t col){
