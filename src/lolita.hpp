@@ -151,6 +151,9 @@ namespace lolita
         /* Placeholder */
         constexpr const char PLACEHOLDER = 'X';
 
+        /* Binary Pixel */
+        constexpr const char BINARY = '2';
+
         /* Gray Scale */
         constexpr const char GRAYSCALE = 'Y';
 
@@ -247,6 +250,24 @@ namespace lolita
                     n = (n << 8) | m_data[i];
                 }
                 return n;
+            }
+
+            /************************************************************
+            * @brief get the binary value
+            * @return the binary value
+            ************************************************************/
+            bool binary() const
+            {
+                return m_get<ColorSpace::BINARY>() != 0;
+            }
+
+            /************************************************************
+            * @brief set the binary value
+            * @param[in] v the binary value
+            ************************************************************/
+            void setBinary(bool v)
+            {
+                m_set<ColorSpace::BINARY>(v ? 1 : 0);
             }
 
             /************************************************************
@@ -440,6 +461,8 @@ namespace lolita
             }
         }; // class BasicPixel
 
+        using Binary = BasicPixel<ColorSpace::ID("2")>;
+
         using GrayScale = BasicPixel<ColorSpace::ID("Y")>;
 
         using RGB24 = BasicPixel<ColorSpace::ID("RGB")>;
@@ -484,32 +507,6 @@ namespace lolita
         // using LHS24 = BasicPixel<ColorSpace::ID("LHS")>;
         // using LSH24 = BasicPixel<ColorSpace::ID("LSH")>;
 
-        
-        class Binary
-        {
-        public:
-            /************************************************************
-            * @brief get the binary value
-            * @return the binary value
-            ************************************************************/
-            bool value()
-            {
-                return m_value != 0;
-            }
-
-            /************************************************************
-            * @brief set the binary value
-            * @param[in] v the binary value
-            ************************************************************/
-            void setValue(bool v)
-            {
-                m_value = v ? 1 : 0;
-            }
-
-        private:
-            unsigned int m_value = 0;
-        };
-
     }; // namespace ::lolita::Pixel
     #pragma pack(pop)
 
@@ -549,6 +546,7 @@ namespace lolita
             {
                 throw std::bad_alloc();
             }
+            memset(data, 0, size());
             this->m_data = reinterpret_cast<ElemType*>(data);
         }
 
@@ -771,6 +769,15 @@ namespace lolita
         }
 
         /************************************************************
+        * @brief get count of matrix elements
+        * @return the count 
+        ************************************************************/
+        size_t count() const
+        {
+            return m_width * m_height;
+        }
+
+        /************************************************************
         * @brief reset the width and height of the matrix
         *        element data will be invalid
         * @param[in] width the new width
@@ -839,6 +846,21 @@ namespace lolita
                 }
             }
         }
+
+        /************************************************************
+        * @brief handle the every elements of the matrix
+        * @param[in] callback callback funtion to hanlde the elements
+        ************************************************************/
+        void map(std::function<void(ElemType&, size_t, size_t)> callback)
+        {
+            for(size_t row = 0; row < m_height; row++)
+            {
+                for(size_t col = 0; col < m_width; col++)
+                {
+                    callback((*this)[row][col], row, col);
+                }
+            }
+        }
         
         /************************************************************
         * @brief handle the every elements of the matrix and sum the result
@@ -858,6 +880,24 @@ namespace lolita
             return n;
         }
 
+        /************************************************************
+        * @brief handle the every elements of the matrix and sum the result
+        * @param[in] callback callback funtion to hanlde the elements
+        ************************************************************/
+        template<typename T>
+        T reduce(std::function<T(ElemType&, size_t, size_t)> callback)
+        {
+            T n{0};
+            for(size_t row = 0; row < m_height; row++)
+            {
+                for(size_t col = 0; col < m_width; col++)
+                {
+                    n += callback((*this)[row][col], row, col);
+                }
+            }
+            return n;
+        }
+
     private:
         size_t m_width;
         size_t m_height;
@@ -867,6 +907,39 @@ namespace lolita
 
     namespace PixelConvert
     {
+        /************************************************************
+        * @brief convert any type pixel to a binary pixel
+        * @param[out] out the output binary pixel
+        * @param[in] in the input pixel
+        * @return is success
+        ************************************************************/
+        template<typename BinPixel, typename AnyPixel>
+        bool BINARY(BinPixel& out, const AnyPixel& in, uint8_t threshold=0x7f)
+        {
+            // RGB(A)
+            if(utils::eval<bool, ColorSpace::compatible(AnyPixel::id, "RGB")>())
+            {
+                uint8_t gray = (in.red()*299 + in.green()*587 + in.blue()*114 + 500) / 1000;
+                out.setBinary(gray > threshold);
+                return true;
+            }
+
+            // gray scale
+            if(utils::eval<bool, ColorSpace::compatible(AnyPixel::id, "Y")>())
+            {
+                out.setBinary(in.grayScale() > threshold);
+                return true;
+            }
+
+            // binary
+            if(utils::eval<bool, ColorSpace::compatible(AnyPixel::id, "2")>())
+            {
+                out.setBinary(in.binary());
+                return true;
+            }
+
+            return false;
+        }
 
         /************************************************************
         * @brief convert any type pixel to a gray scale pixel
@@ -880,8 +953,7 @@ namespace lolita
             // RGB(A)
             if(utils::eval<bool, ColorSpace::compatible(AnyPixel::id, "RGB")>())
             {
-                // out.setGrayScale((in.red()*299 + in.green()*587 + in.blue()*114 + 500) / 1000);
-                out.setGrayScale(0xff);
+                out.setGrayScale((in.red()*299 + in.green()*587 + in.blue()*114 + 500) / 1000);
                 return true;
             }
 
@@ -889,6 +961,13 @@ namespace lolita
             if(utils::eval<bool, ColorSpace::compatible(AnyPixel::id, "Y")>())
             {
                 out.setGrayScale(in.grayScale());
+                return true;
+            }
+
+            // binary
+            if(utils::eval<bool, ColorSpace::compatible(AnyPixel::id, "2")>())
+            {
+                out.setGrayScale(in.binary() ? 0xff : 0);
                 return true;
             }
 
@@ -920,6 +999,15 @@ namespace lolita
                 out.setRed(in.grayScale());
                 out.setGreen(in.grayScale());
                 out.setBlue(in.grayScale());
+                return true;
+            }
+
+            // binary
+            if(utils::eval<bool, ColorSpace::compatible(AnyPixel::id, "2")>())
+            {
+                out.setRed(in.binary() ? 0xff : 0);
+                out.setGreen(in.binary() ? 0xff : 0);
+                out.setBlue(in.binary() ? 0xff : 0);
                 return true;
             }
 
@@ -961,7 +1049,17 @@ namespace lolita
                 out.setRed(in.grayScale());
                 out.setGreen(in.grayScale());
                 out.setBlue(in.grayScale());
-                out.setAlpha(0);
+                out.setAlpha(0xff);
+                return true;
+            }
+
+            // binary
+            if(utils::eval<bool, ColorSpace::compatible(AnyPixel::id, "2")>())
+            {
+                out.setRed(in.binary() ? 0xff : 0);
+                out.setGreen(in.binary() ? 0xff : 0);
+                out.setBlue(in.binary() ? 0xff : 0);
+                out.setAlpha(0xff);
                 return true;
             }
 
@@ -971,6 +1069,34 @@ namespace lolita
 
     namespace MatConvert
     {
+        /************************************************************
+        * @brief convert any type matrix to a binary matrix
+        * @param[out] out the output binary matrix
+        * @param[in] in the input matrix
+        * @param[in] keepRowPadding is keep the row padding
+        * @return is success
+        ************************************************************/
+        template<typename BinPixel, typename AnyPixel>
+        bool BINARY(Mat<BinPixel>& out, const Mat<AnyPixel> in, uint8_t threshold=0x7f, bool keepRowPadding=false)
+        {
+            if(keepRowPadding)
+                out.resize(in.width(), in.height(), in.rowPadding());
+            else
+                out.resize(in.width(), in.height());
+
+            for(size_t row = 0; row < in.height(); row++)
+            {
+                for(size_t col = 0; col < in.width(); col++)
+                {
+                    if(PixelConvert::BINARY(out[row][col], in[row][col], threshold) == false)
+                    {
+                        return false;
+                    }
+                }
+            }
+            return true;
+        }
+
         /************************************************************
         * @brief convert any type matrix to a gray scale matrix
         * @param[out] out the output gray scale matrix
@@ -1035,6 +1161,7 @@ namespace lolita
             Bit24,
             Bit16,
             Palette,
+            Binary,
         };
 
         #pragma pack(push)
@@ -1051,7 +1178,7 @@ namespace lolita
 
         struct InfoHeader
         {
-            uint32_t size;  // size of InfoHeader(40) + palettes
+            uint32_t size;  // size of InfoHeader(40)
             uint32_t width;
             uint32_t height;
             uint16_t planes;
@@ -1072,7 +1199,7 @@ namespace lolita
             uint8_t reserved;
 
             RGBPalette(uint8_t r=0, uint8_t g=0, uint8_t b=0):
-                blue(b), green(g), red(r)
+                blue(b), green(g), red(r), reserved(0)
             {}
         };
 
@@ -1184,10 +1311,11 @@ namespace lolita
             * @param[in] image the image matrix
             * @param[out] out the index matrix
             * @param[out] palettes the BMP RGB palettes
+            * @param[in] max the max count of palettes
             * @return is success
             ************************************************************/
             template<typename RGBPixel>
-            static inline bool generatePalette(const Mat<RGBPixel>& image, Mat<size_t>& out, std::vector<RGBPalette>& palettes)
+            static inline bool generatePalette(const Mat<RGBPixel>& image, Mat<uint8_t>& out, std::vector<RGBPalette>& palettes, size_t max=256)
             {
                 out.resize(image.width(), image.height());
                 std::map<uint64_t, size_t> cache;
@@ -1206,30 +1334,179 @@ namespace lolita
                         catch(std::out_of_range& e)
                         {
                             size_t index = palettes.size();
+                            if(index >= max)
+                            {
+                                return false;
+                            }
                             palettes.emplace_back(pix.red(), pix.green(), pix.blue());
                             cache[color] = index;
                             out[row][col] = index;
                         }
                     }
                 }
+
                 return true;
             }
 
             /************************************************************
             * @brief write a 24bit BMP image
+            * @param[in] image the index matrix
+            * @param[in] palettes the palettes
+            * @param[in] file the BMP file name
+            * @return is success
+            ************************************************************/
+            static inline bool writeWithPalette(Mat<uint8_t>& image, const std::vector<RGBPalette>& palettes, const char* file)
+            {
+                FILE* fp = fopen(file, "wb");
+                if(fp == nullptr)
+                {
+                    return false;
+                }
+
+                image.setRowPadding(utils::padding(image.width(), 4));
+
+                FileHeader fileHeader;
+                fileHeader.type[0] = 'B';
+                fileHeader.type[1] = 'M';
+                fileHeader.offset = sizeof(FileHeader) + sizeof(InfoHeader) + sizeof(RGBPalette) * palettes.size();
+                fileHeader.size = fileHeader.offset + image.size();
+
+                InfoHeader infoHeader;
+                infoHeader.bitCount = 8;
+                infoHeader.colorUsed = palettes.size();
+                infoHeader.colorImportant = palettes.size();
+                infoHeader.size = sizeof(InfoHeader);
+                infoHeader.width = image.width();
+                infoHeader.height = image.height();
+                infoHeader.planes = 1;
+                infoHeader.compression = 0;
+                infoHeader.pixelSize = image.size();
+                infoHeader.xPixelPerMeter = 3780;
+                infoHeader.yPixelPerMeter = 3780;
+
+                fwrite(&fileHeader, sizeof(fileHeader), 1, fp);
+                fwrite(&infoHeader, sizeof(infoHeader), 1, fp);
+                fwrite(palettes.data(), sizeof(RGBPalette) * palettes.size(), 1, fp);
+                fwrite(image.data(), image.size(), 1, fp);
+                fclose(fp);
+                return true;
+            }
+
+            /************************************************************
+            * @brief write a 24bit BMP image with palettes
             * @param[in] image the image matrix
             * @param[in] file the BMP file name
             * @return is success
             ************************************************************/
             static inline bool writeWithPalette(const Mat<Pixel::BGR24>& image, const char* file)
             {
-                Mat<size_t> out; 
+                Mat<uint8_t> out; 
                 std::vector<RGBPalette> palettes;
-                generatePalette(image, out, palettes);
+                if(!generatePalette(image, out, palettes))
+                {
+                    return false;
+                }
                 
-                // TODO: 
+                return writeWithPalette(out, palettes, file);
+            }
 
+            /************************************************************
+            * @brief write a binary image with palettes
+            * @param[in] image the image matrix
+            * @param[in] file the BMP file name
+            * @param[in] binary0 the color of 0 in binary image
+            * @param[in] binary1 the color of 1 in binary image
+            * @return is success
+            ************************************************************/
+            static inline bool writeBinary(const Mat<Pixel::Binary>& image, const char* file, 
+                                            RGBPalette binary0 = RGBPalette{0,0,0}, 
+                                            RGBPalette binary1 = RGBPalette{0xff, 0xff, 0xff})
+            {
+                FILE* fp = fopen(file, "wb");
+                if(fp == nullptr)
+                {
+                    return false;
+                }
+
+                size_t rowSize = (image.width() + 7) / 8;
+                size_t rowPadding = utils::padding(rowSize, 4);
+                rowSize = rowSize + rowPadding;
+
+                FileHeader fileHeader;
+                fileHeader.type[0] = 'B';
+                fileHeader.type[1] = 'M';
+                fileHeader.offset = sizeof(FileHeader) + sizeof(InfoHeader) + 2 * sizeof(RGBPalette);
+                fileHeader.size = fileHeader.offset + rowSize * image.height();
+
+                InfoHeader infoHeader;
+                infoHeader.size = sizeof(InfoHeader);
+                infoHeader.width = image.width();
+                infoHeader.height = image.height();
+                infoHeader.planes = 1;
+                infoHeader.bitCount = 1;
+                infoHeader.compression = 0;
+                infoHeader.pixelSize = image.size();
+                infoHeader.xPixelPerMeter = 3780;
+                infoHeader.yPixelPerMeter = 3780;
+                infoHeader.colorUsed = 2;
+                infoHeader.colorImportant = 2;
+                
+                fwrite(&fileHeader, sizeof(fileHeader), 1, fp);
+                fwrite(&infoHeader, sizeof(infoHeader), 1, fp);
+                fwrite(&binary0, sizeof(RGBPalette), 1, fp);
+                fwrite(&binary1, sizeof(RGBPalette), 1, fp);
+                for(size_t row = 0; row < image.height(); row++)
+                {
+                    for(size_t col = 0; col < image.width(); col+=8)
+                    {
+                        uint8_t color = 0;
+                        for(size_t bit = 0; bit < 8 && col + bit < image.width(); bit++)
+                        {
+                            if(image[row][col+bit].binary())
+                            {
+                                color |= 1 << (7-bit);
+                            }
+                        }
+                        fwrite(&color, 1, 1, fp);
+                    }
+                    static uint8_t n = 0;
+                    fwrite(&n, rowPadding, 1, fp);
+                }
+
+                fclose(fp);
                 return true;
+            }
+
+            /************************************************************
+            * @brief write a binary image with palettes
+            * @param[in] image the image matrix
+            * @param[in] file the BMP file name
+            * @param[in] binary0 the color of 0 in binary image
+            * @param[in] binary1 the color of 1 in binary image
+            * @return is success
+            ************************************************************/
+            template<typename AnyPixel>
+            static inline bool writeBinary(const Mat<AnyPixel>& image, const char* file, 
+                                            RGBPalette binary0 = RGBPalette{0,0,0}, 
+                                            RGBPalette binary1 = RGBPalette{0xff, 0xff, 0xff})
+            {
+                Mat<Pixel::Binary> out;
+                MatConvert::BINARY(out, image);
+                return writeBinary(out, file, binary0, binary1);
+            }
+
+            /************************************************************
+            * @brief write a any BMP image with palettes
+            * @param[in] image the image matrix
+            * @param[in] file the BMP file name
+            * @return is success
+            ************************************************************/
+            template<typename AnyPixel>
+            static inline bool writeWithPalette(const Mat<AnyPixel>& image, const char* file)
+            {
+                Mat<Pixel::BGR24> rgb;
+                MatConvert::RGB(rgb, image);
+                return writeWithPalette(rgb, file);
             }
 
         }; // namespace ::lolita::BMP::_BMP_private
@@ -1287,29 +1564,33 @@ namespace lolita
         * @brief write a BMP image
         * @param[in] image the image matrix
         * @param[in] file the file path
+        * @param[in] binary0 the color of 0 in binary image
+        * @param[in] binary1 the color of 1 in binary image
         * @return is success
         ************************************************************/
         template<typename AnyPixel>
-        static inline bool write(const Mat<AnyPixel>& image, const char* file, size_t bits=24)
+        static inline bool write(const Mat<AnyPixel>& image, const char* file, Format format=Format::Bit24, 
+                                    RGBPalette binary0 = RGBPalette{0,0,0}, 
+                                    RGBPalette binary1 = RGBPalette{0xff, 0xff, 0xff})
         {
             if(!image.valid() || file == nullptr)
             {
                 return false;
             }
 
-            switch (bits)
+            switch(format)
             {
-            case 24:
+            case Format::Bit24:
                 return _BMP_private::write24(image, file);
 
-            case 16:
+            case Format::Bit16:
                 return false;
 
-            case 8:
-            case 4:
-            case 2:
-            case 1:
-                // return _BMP_private::writeWithPalette(image, file);
+            case Format::Palette:
+                return _BMP_private::writeWithPalette(image, file);
+
+            case Format::Binary:
+                return _BMP_private::writeBinary(image, file, binary0, binary1);
             
             default:
                 return false;

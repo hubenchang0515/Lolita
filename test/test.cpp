@@ -132,7 +132,40 @@ void testBMP()
     BMP::write(out3, "out3.bmp");
     BMP::write(out4, "out4.bmp");
     BMP::write(out5, "out5.bmp");
-    BMP::write(out6, "out6.bmp");
+    BMP::write(out6, "out6.bmp", BMP::Format::Palette);
+
+    Mat<Pixel::Binary> bin{200, 200};
+    BMP::write(source, "bin.bmp", BMP::Format::Binary);
+
+    Mat<Pixel::BGR24> color{300, 300};
+    color.map([](Pixel::BGR24& pix, size_t row, size_t col){
+        if(row < 100)
+        {
+            pix.setRed(0xff);
+        }
+        else if(row < 200)
+        {
+            pix.setGreen(0xff);
+        }
+        else
+        {
+            pix.setBlue(0xff);
+        }
+
+        if(col < 100)
+        {
+            pix.setRed(0xff);
+        }
+        else if(col < 200)
+        {
+            pix.setGreen(0xff);
+        }
+        else
+        {
+            pix.setBlue(0xff);
+        }
+    });
+    BMP::write(color, "color.bmp", BMP::Format::Palette);
 }
 
 int main()
