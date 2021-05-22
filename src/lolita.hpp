@@ -28,7 +28,20 @@ namespace lolita
     namespace utils
     {
         /************************************************************
-        * @brief calculate the padding length of alignment while compiling
+        * @brief request the compiler calculate a constexpr while compiling
+        *        like the key work 'consteval' in C++20
+        * @param[in] T the return type
+        * @param[in] expr a const expression
+        * @return the value of expr
+        ************************************************************/
+        template<typename T, T expr>
+        constexpr static inline T eval()
+        {
+            return expr;
+        }
+
+        /************************************************************
+        * @brief calculate the padding length of alignment 
         * @param[in] len   data length
         * @param[in] align alignment bytes
         * @return the padding length
@@ -38,20 +51,12 @@ namespace lolita
             return (align - (len % align)) % align;
         }
 
-        /************************************************************
-        * @brief force the compiler to optimize a constexpr in condition
-        ************************************************************/
-        template<bool n>
-        constexpr bool is()
-        {
-            return n;
-        }
     }; // ::lolita::utils
 
     namespace _private
     {
         /************************************************************
-        * @brief calculate the length of string while compiling
+        * @brief calculate the length of string 
         * @param[in] str a C-style string
         * @return length of str
         ************************************************************/
@@ -61,7 +66,7 @@ namespace lolita
         }
 
         /************************************************************
-        * @brief find the index of the firsct char in the string while compiling
+        * @brief find the index of the firsct char in the string 
         * @param[in] str a C-style string
         * @param[in] ch  the char to be found
         * @param[in] index the start point
@@ -73,7 +78,7 @@ namespace lolita
         }
 
         /************************************************************
-        * @brief decide if two string equal while compiling
+        * @brief decide if two string equal 
         * @param[in] str1 a C-style string
         * @param[in] str2 a C-style string
         * @return if queal
@@ -84,7 +89,7 @@ namespace lolita
         }
 
         /************************************************************
-        * @brief combine a string to be an uint64_t while compiling
+        * @brief combine a string to be an uint64_t 
         * @param[in] str a C-style string
         * @param[in] n   the initial value
         * @return the combined value
@@ -95,7 +100,7 @@ namespace lolita
         }
 
         /************************************************************
-        * @brief find the index of a char in an combined uint64_t value while compiling
+        * @brief find the index of a char in an combined uint64_t value 
         * @param[in] n  a combined uint64_t value
         * @param[in] ch the char to be found
         * @return the index
@@ -106,7 +111,7 @@ namespace lolita
         }
 
         /************************************************************
-        * @brief calculate the length of a combined uint64_t value while compiling
+        * @brief calculate the length of a combined uint64_t value 
         * @param[in] n  a combined uint64_t value
         * @param[in] len the initial value
         * @return the length
@@ -122,7 +127,7 @@ namespace lolita
         * @param[in] ch the char
         * @return does have
         ************************************************************/
-        constexpr static inline size_t _uint64StringHas(uint64_t n, char ch)
+        constexpr static inline bool _uint64StringHas(uint64_t n, char ch)
         {
             return (n & 0xff) == static_cast<uint64_t>(ch) ? true : (n == 0 ? false : _uint64StringHas(n >> 8, ch));
         }
@@ -133,7 +138,7 @@ namespace lolita
         * @param[in] str the string
         * @return does have
         ************************************************************/
-        constexpr static inline size_t _uint64StringHas(uint64_t n, const char* str)
+        constexpr static inline bool _uint64StringHas(uint64_t n, const char* str)
         {
             return *str == 0 ? true : (!_uint64StringHas(n, *str) ? false : _uint64StringHas(n, str+1));
         }
@@ -161,7 +166,7 @@ namespace lolita
         constexpr const char LIGHTNESS  = 'L';
 
         /************************************************************
-        * @brief get the color space ID while compiling
+        * @brief get the color space ID 
         * @param[in] str a C-style string
         * @return the color space ID
         ************************************************************/
@@ -176,13 +181,13 @@ namespace lolita
         * @param[in] str a C-style string
         * @return is similiar
         ************************************************************/
-        constexpr static inline uint64_t compatible(uint64_t id, const char* str)
+        constexpr static inline bool compatible(uint64_t id, const char* str)
         {
             return _private::_uint64StringHas(id, str);
         }
 
         /************************************************************
-        * @brief get the color index while compiling
+        * @brief get the color index 
         * @param[in] n  color space ID
         * @param[in] ch color
         * @return the color index
@@ -193,7 +198,7 @@ namespace lolita
         }
 
         /************************************************************
-        * @brief get the length pf color space while compiling
+        * @brief get the length pf color space 
         * @param[in] n  color space ID
         * @return the length
         ************************************************************/
@@ -873,7 +878,7 @@ namespace lolita
         bool GRAY(GrayPixel& out, const AnyPixel& in)
         {
             // RGB(A)
-            if(utils::is<ColorSpace::compatible(AnyPixel::id, "RGB")>())
+            if(utils::eval<bool, ColorSpace::compatible(AnyPixel::id, "RGB")>())
             {
                 // out.setGrayScale((in.red()*299 + in.green()*587 + in.blue()*114 + 500) / 1000);
                 out.setGrayScale(0xff);
@@ -881,7 +886,7 @@ namespace lolita
             }
 
             // gray scale
-            if(utils::is<ColorSpace::compatible(AnyPixel::id, "Y")>())
+            if(utils::eval<bool, ColorSpace::compatible(AnyPixel::id, "Y")>())
             {
                 out.setGrayScale(in.grayScale());
                 return true;
@@ -900,7 +905,7 @@ namespace lolita
         bool RGB(RGBPixel& out, const AnyPixel& in)
         {
             // RGB(A)
-            if(utils::is<ColorSpace::compatible(AnyPixel::id, "RGB")>())
+            if(utils::eval<bool, ColorSpace::compatible(AnyPixel::id, "RGB")>())
             {
                 
                 out.setRed(in.red());
@@ -910,7 +915,7 @@ namespace lolita
             }
 
             // gray scale
-            if(utils::is<ColorSpace::compatible(AnyPixel::id, "Y")>())
+            if(utils::eval<bool, ColorSpace::compatible(AnyPixel::id, "Y")>())
             {
                 out.setRed(in.grayScale());
                 out.setGreen(in.grayScale());
@@ -931,7 +936,7 @@ namespace lolita
         bool RGBA(RGBAPixel& out, const AnyPixel& in)
         {
             // RGBA
-            if(utils::is<ColorSpace::compatible(AnyPixel::id, "RGBA")>())
+            if(utils::eval<bool, ColorSpace::compatible(AnyPixel::id, "RGBA")>())
             {
                 out.setRed(in.red());
                 out.setGreen(in.green());
@@ -941,7 +946,7 @@ namespace lolita
             }
 
             // RGB
-            if(utils::is<ColorSpace::compatible(AnyPixel::id, "RGB")>())
+            if(utils::eval<bool, ColorSpace::compatible(AnyPixel::id, "RGB")>())
             {
                 out.setRed(in.red());
                 out.setGreen(in.green());
@@ -951,7 +956,7 @@ namespace lolita
             }
 
             // geay scale
-            if(utils::is<ColorSpace::compatible(AnyPixel::id, "Y")>())
+            if(utils::eval<bool, ColorSpace::compatible(AnyPixel::id, "Y")>())
             {
                 out.setRed(in.grayScale());
                 out.setGreen(in.grayScale());
