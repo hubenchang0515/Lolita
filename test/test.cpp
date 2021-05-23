@@ -139,7 +139,7 @@ void testBMP()
     BMP::write(source, "bin0.bmp", BMP::Format::Binary, BMP::RGBPalette(0x9966ff), BMP::RGBPalette(0xffffff));
     BMP::write(bin, "bin1.bmp", BMP::Format::Binary, BMP::RGBPalette(0x9966ff), BMP::RGBPalette(0xffffff));
 
-    Mat<Pixel::BGR24> color{300, 300};
+    Mat<Pixel::BGR24> color{301, 301};
     color.map([](Pixel::BGR24& pix, size_t row, size_t col){
         if(row < 100)
         {
@@ -167,7 +167,11 @@ void testBMP()
             pix.setBlue(0xff);
         }
     });
-    BMP::write(color, "color.bmp", BMP::Format::Palette);
+
+    BMP::write(color, "color24.bmp");
+    BMP::write(color, "color16.bmp", BMP::Format::Bit16);
+    BMP::write(color, "palette.bmp", BMP::Format::Palette);
+    BMP::write(color, "color2.bmp", BMP::Format::Binary);
 }
 
 int main()

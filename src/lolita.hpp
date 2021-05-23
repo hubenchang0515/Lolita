@@ -704,6 +704,7 @@ namespace lolita
                     row--;
                 }while(row > 0);
                 m_data = reinterpret_cast<ElemType*>(data);
+                m_rowPadding = rowPadding;
             }
             else
             {
@@ -718,6 +719,7 @@ namespace lolita
                     return false;
                 }
                 m_data = reinterpret_cast<ElemType*>(data);
+                m_rowPadding = rowPadding;
             }
             return true;
         }
@@ -1403,6 +1405,7 @@ namespace lolita
                 }
 
                 Mat<Pixel::BGR24> out = MatConvert::cast<Pixel::BGR24>(image);
+                out.setRowPadding(utils::padding(3*out.width(), 4));
 
                 FileHeader fileHeader(out.size());
                 InfoHeader infoHeader(out.width(), out.height(), out.size());
@@ -1440,12 +1443,19 @@ namespace lolita
                 
                 fwrite(&fileHeader, sizeof(fileHeader), 1, fp);
                 fwrite(&infoHeader, sizeof(infoHeader), 1, fp);
-                out.map([fp](Pixel::BGR24& pix){
+                out.map([fp, rowPadding, &out](Pixel::BGR24& pix, size_t row, size_t col){
+                    (void)(row);
                     uint16_t color = 0;
                     color |= static_cast<uint16_t>(pix.red()) >> 3 << 10;
                     color |= static_cast<uint16_t>(pix.green()) >> 3 << 5;
                     color |= static_cast<uint16_t>(pix.blue()) >> 3;
                     fwrite(&color, 2, 1, fp);
+                    
+                    if(col == out.width() - 1)
+                    {
+                        uint8_t pad = 0;
+                        fwrite(&pad, 1, rowPadding, fp);
+                    }
                 });
                 fclose(fp);
                 return true;
@@ -1518,6 +1528,7 @@ namespace lolita
                 fwrite(&infoHeader, sizeof(infoHeader), 1, fp);
                 fwrite(palettes.data(), sizeof(RGBPalette) * palettes.size(), 1, fp);
                 fwrite(image.data(), image.size(), 1, fp);
+                printf("%zu %zu %zu\n",utils::padding(image.width(), 4), image.rowPadding(), image.size());
                 fclose(fp);
                 return true;
             }
