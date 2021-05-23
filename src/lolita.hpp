@@ -1528,7 +1528,56 @@ namespace lolita
                 fwrite(&infoHeader, sizeof(infoHeader), 1, fp);
                 fwrite(palettes.data(), sizeof(RGBPalette) * palettes.size(), 1, fp);
                 fwrite(image.data(), image.size(), 1, fp);
-                printf("%zu %zu %zu\n",utils::padding(image.width(), 4), image.rowPadding(), image.size());
+                fclose(fp);
+                return true;
+            }
+
+            /************************************************************
+            * @brief write a 24bit BMP image with 4 bits palette
+            * @param[in] image the index matrix
+            * @param[in] palettes the palettes
+            * @param[in] file the BMP file name
+            * @return is success
+            ************************************************************/
+            static inline bool writeWithPalette4(Mat<uint8_t>& image, const std::vector<RGBPalette>& palettes, const char* file)
+            {
+                FILE* fp = fopen(file, "wb");
+                if(fp == nullptr)
+                {
+                    return false;
+                }
+
+                size_t rowSize = utils::ceil(image.width(), size_t(2));
+                size_t rowPadding = utils::padding(rowSize, 4);
+                rowSize = rowSize + rowPadding;
+                size_t pixelSize = rowSize * image.height();
+
+                uint32_t offset = sizeof(FileHeader) + sizeof(InfoHeader) + sizeof(RGBPalette) * palettes.size();
+                FileHeader fileHeader(pixelSize, offset);
+                InfoHeader infoHeader(image.width(), image.height(), pixelSize, 4, palettes.size());
+
+                fwrite(&fileHeader, sizeof(fileHeader), 1, fp);
+                fwrite(&infoHeader, sizeof(infoHeader), 1, fp);
+                fwrite(palettes.data(), sizeof(RGBPalette) * palettes.size(), 1, fp);
+
+                for(size_t row = 0; row < image.height(); row++)
+                {
+                    for(size_t col1 = 0; col1 < image.width(); col1+=2)
+                    {
+                        uint8_t color = 0;
+                        for(size_t col2 = 0; col2 < 2 && col1 + col2 < image.width(); col2++)
+                        {
+                            if(col2 == 0)
+                                color |= image[row][col1+col2] << 4;
+                            else
+                                color |= image[row][col1+col2];
+                        }
+                        fwrite(&color, 1, 1, fp);
+                    }
+                    static uint8_t n = 0;
+                    fwrite(&n, rowPadding, 1, fp);
+                }
+                
                 fclose(fp);
                 return true;
             }
@@ -1605,7 +1654,10 @@ namespace lolita
                     return false;
                 }
                 
-                return writeWithPalette8(out, palettes, file);
+                if(palettes.size() > 16)
+                    return writeWithPalette8(out, palettes, file);
+                else
+                    return writeWithPalette4(out, palettes, file);
             }
 
         }; // namespace ::lolita::BMP::_BMP_private
