@@ -1504,13 +1504,15 @@ namespace lolita
             }
 
             /************************************************************
-            * @brief write a 24bit BMP image with 8 bits palette
-            * @param[in] image the index matrix
+            * @brief write a 24bit BMP image with palette
+            * @param[in] index the index matrix
             * @param[in] palettes the palettes
             * @param[in] file the BMP file name
             * @return is success
             ************************************************************/
-            static inline bool writeWithPalette8(Mat<uint8_t>& image, const std::vector<RGBPalette>& palettes, const char* file)
+            template<size_t bits> 
+            typename std::enable_if<bits == 8 || bits == 4 || bits == 1, bool>::type
+            static inline writeWithPalette(Mat<uint8_t>& index, const std::vector<RGBPalette>& palettes, const char* file)
             {
                 FILE* fp = fopen(file, "wb");
                 if(fp == nullptr)
@@ -1518,66 +1520,42 @@ namespace lolita
                     return false;
                 }
 
-                image.setRowPadding(utils::padding(image.width(), 4));
-
-                uint32_t offset = sizeof(FileHeader) + sizeof(InfoHeader) + sizeof(RGBPalette) * palettes.size();
-                FileHeader fileHeader(image.size(), offset);
-                InfoHeader infoHeader(image.width(), image.height(), image.size(), 8, palettes.size());
-
-                fwrite(&fileHeader, sizeof(fileHeader), 1, fp);
-                fwrite(&infoHeader, sizeof(infoHeader), 1, fp);
-                fwrite(palettes.data(), sizeof(RGBPalette) * palettes.size(), 1, fp);
-                fwrite(image.data(), image.size(), 1, fp);
-                fclose(fp);
-                return true;
-            }
-
-            /************************************************************
-            * @brief write a 24bit BMP image with 4 bits palette
-            * @param[in] image the index matrix
-            * @param[in] palettes the palettes
-            * @param[in] file the BMP file name
-            * @return is success
-            ************************************************************/
-            static inline bool writeWithPalette4(Mat<uint8_t>& image, const std::vector<RGBPalette>& palettes, const char* file)
-            {
-                FILE* fp = fopen(file, "wb");
-                if(fp == nullptr)
-                {
-                    return false;
-                }
-
-                size_t rowSize = utils::ceil(image.width(), size_t(2));
+                size_t rowSize = utils::ceil(index.width(), 8/bits);
                 size_t rowPadding = utils::padding(rowSize, 4);
                 rowSize = rowSize + rowPadding;
-                size_t pixelSize = rowSize * image.height();
+                size_t pixelSize = rowSize * index.height();
 
                 uint32_t offset = sizeof(FileHeader) + sizeof(InfoHeader) + sizeof(RGBPalette) * palettes.size();
                 FileHeader fileHeader(pixelSize, offset);
-                InfoHeader infoHeader(image.width(), image.height(), pixelSize, 4, palettes.size());
+                InfoHeader infoHeader(index.width(), index.height(), pixelSize, bits, palettes.size());
 
                 fwrite(&fileHeader, sizeof(fileHeader), 1, fp);
                 fwrite(&infoHeader, sizeof(infoHeader), 1, fp);
                 fwrite(palettes.data(), sizeof(RGBPalette) * palettes.size(), 1, fp);
 
-                for(size_t row = 0; row < image.height(); row++)
+                if(utils::eval<bool, bits == 8>::value)
                 {
-                    for(size_t col1 = 0; col1 < image.width(); col1+=2)
-                    {
-                        uint8_t color = 0;
-                        for(size_t col2 = 0; col2 < 2 && col1 + col2 < image.width(); col2++)
-                        {
-                            if(col2 == 0)
-                                color |= image[row][col1+col2] << 4;
-                            else
-                                color |= image[row][col1+col2];
-                        }
-                        fwrite(&color, 1, 1, fp);
-                    }
-                    static uint8_t n = 0;
-                    fwrite(&n, rowPadding, 1, fp);
+                    index.setRowPadding(rowPadding);
+                    fwrite(index.data(), index.size(), 1, fp);
                 }
-                
+                else
+                {
+                    constexpr const size_t group = utils::eval<size_t, 8 / bits>::value;
+                    for(size_t row = 0; row < index.height(); row++)
+                    {
+                        for(size_t col1 = 0; col1 < index.width(); col1+=group)
+                        {
+                            uint8_t color = 0;
+                            for(size_t col2 = 0; col2 < group && col1 + col2 < index.width(); col2++)
+                            {
+                                color |= index[row][col1+col2] << (bits * (group - col2 - 1));
+                            }
+                            fwrite(&color, 1, 1, fp);
+                        }
+                        static uint8_t n = 0;
+                        fwrite(&n, rowPadding, 1, fp);
+                    }
+                }
                 fclose(fp);
                 return true;
             }
@@ -1594,47 +1572,13 @@ namespace lolita
             static inline bool writeBinary(const Mat<AnyPixel>& image, const char* file, 
                                             RGBPalette binary0 = 0, RGBPalette binary1 = 0xffffff)
             {
-                FILE* fp = fopen(file, "wb");
-                if(fp == nullptr)
-                {
-                    return false;
-                }
-
-                Mat<Pixel::Binary> out = MatConvert::cast<Pixel::Binary>(image);
-                
-                size_t rowSize = utils::ceil(image.width(), size_t(8));
-                size_t rowPadding = utils::padding(rowSize, 4);
-                rowSize = rowSize + rowPadding;
-
-                uint32_t offset = sizeof(FileHeader) + sizeof(InfoHeader) + 2 * sizeof(RGBPalette);
-                uint32_t pixelSize = rowSize * out.height();
-                FileHeader fileHeader(pixelSize, offset);
-                InfoHeader infoHeader(out.width(), out.height(), pixelSize, 1);
-                
-                fwrite(&fileHeader, sizeof(fileHeader), 1, fp);
-                fwrite(&infoHeader, sizeof(infoHeader), 1, fp);
-                fwrite(&binary0, sizeof(RGBPalette), 1, fp);
-                fwrite(&binary1, sizeof(RGBPalette), 1, fp);
-                for(size_t row = 0; row < out.height(); row++)
-                {
-                    for(size_t col = 0; col < out.width(); col+=8)
-                    {
-                        uint8_t color = 0;
-                        for(size_t bit = 0; bit < 8 && col + bit < out.width(); bit++)
-                        {
-                            if(out[row][col+bit].binary())
-                            {
-                                color |= 1 << (7-bit);
-                            }
-                        }
-                        fwrite(&color, 1, 1, fp);
-                    }
-                    static uint8_t n = 0;
-                    fwrite(&n, rowPadding, 1, fp);
-                }
-
-                fclose(fp);
-                return true;
+                Mat<Pixel::Binary> bin = MatConvert::cast<Pixel::Binary>(image);
+                Mat<uint8_t> index(bin.width(), bin.height());
+                std::vector<RGBPalette> palettes = {binary0, binary1};
+                bin.map([&index](Pixel::Binary& pix, size_t row, size_t col){
+                    index[row][col] = pix.binary() ? 1 : 0;
+                });
+                return writeWithPalette<1>(index, palettes, file);
             }
 
             /************************************************************
@@ -1647,17 +1591,19 @@ namespace lolita
             static inline bool writeWithPalette(const Mat<AnyPixel>& image, const char* file)
             {
                 Mat<Pixel::BGR24> BGR = MatConvert::cast<Pixel::BGR24>(image);
-                Mat<uint8_t> out; 
+                Mat<uint8_t> index; 
                 std::vector<RGBPalette> palettes;
-                if(!generatePalette(BGR, out, palettes))
+                if(!generatePalette(BGR, index, palettes))
                 {
                     return false;
                 }
                 
                 if(palettes.size() > 16)
-                    return writeWithPalette8(out, palettes, file);
+                    return writeWithPalette<8>(index, palettes, file);
+                else if(palettes.size() > 2)
+                    return writeWithPalette<4>(index, palettes, file);
                 else
-                    return writeWithPalette4(out, palettes, file);
+                    return writeWithPalette<1>(index, palettes, file);
             }
 
         }; // namespace ::lolita::BMP::_BMP_private

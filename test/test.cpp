@@ -141,30 +141,13 @@ void testBMP()
 
     Mat<Pixel::BGR24> color{301, 301};
     color.map([](Pixel::BGR24& pix, size_t row, size_t col){
-        if(row < 100)
+        if((row < 150 && col < 150) || (row >= 150 && col >= 150))
         {
             pix.setRed(0xff);
         }
-        else if(row < 200)
-        {
-            pix.setGreen(0xff);
-        }
         else
         {
-            pix.setBlue(0xff);
-        }
-
-        if(col < 100)
-        {
-            pix.setRed(0xff);
-        }
-        else if(col < 200)
-        {
             pix.setGreen(0xff);
-        }
-        else
-        {
-            pix.setBlue(0xff);
         }
     });
 
