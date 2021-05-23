@@ -114,6 +114,7 @@ void testBMP()
     ASSERT(sizeof(BMP::RGBPalette) == 4);
 
     Mat<Pixel::BGR24> source = BMP::read("input.bmp");
+    BMP::write(source, "16.bmp", BMP::Format::Bit16);
     Mat<Pixel::RGB24> out1;
     Mat<Pixel::BGR24> out2;
     Mat<Pixel::GRB24> out3;

@@ -52,6 +52,32 @@ namespace lolita
             return (align - (len % align)) % align;
         }
 
+        /************************************************************
+        * @brief let n.x -> n+1
+        * @param[in] x the dividend
+        * @param[in] y the divisor
+        * @return the padding length
+        ************************************************************/
+        template<typename T>
+        typename std::enable_if<std::is_integral<T>::value, T>::type
+        constexpr static inline ceil(T x, T y)
+        {
+            return x % y > 0 ? x / y + 1 : x / y;
+        }
+
+        /************************************************************
+        * @brief let n.4 -> n and n.5 -> n+! 
+        * @param[in] x the dividend
+        * @param[in] y the divisor
+        * @return the padding length
+        ************************************************************/
+        template<typename T>
+        typename std::enable_if<std::is_integral<T>::value, T>::type
+        constexpr static inline round(T x, T y)
+        {
+            return (y > (x % y * 2)) ? (x / y) : (x / y + 1);
+        }
+
     }; // ::lolita::utils
 
     namespace _private
@@ -1235,37 +1261,62 @@ namespace lolita
     {
         enum class Format : int
         {
-            Bit24,
-            Bit16,
-            Palette,
-            Binary,
+            Bit24 = 24,
+            Bit16 = 16,
+            Palette = 8,
+            Binary = 1,
         };
 
         #pragma pack(push)
         #pragma pack(1)
 
-        struct FileHeader
-        {
-            uint8_t type[2];    // must be "BM"
-            uint32_t size;      // file size
-            uint16_t reserved1;
-            uint16_t reserved2;
-            uint32_t offset;   // offset of pixel data
-        };
-
         struct InfoHeader
         {
-            uint32_t size;  // size of InfoHeader(40)
+            uint32_t size = 40;             // sizeof(InfoHeader)
             uint32_t width;
             uint32_t height;
-            uint16_t planes;
-            uint16_t bitCount;
-            uint32_t compression;
-            uint32_t pixelSize; // as bytes
-            uint32_t xPixelPerMeter;
-            uint32_t yPixelPerMeter;
-            uint32_t colorUsed;
-            uint32_t colorImportant; 
+            uint16_t planes = 1;
+            uint16_t bitCount = 24;
+            uint32_t compression = 0;
+            uint32_t pixelSize;             // as bytes
+            uint32_t xPixelPerMeter = 3780;
+            uint32_t yPixelPerMeter = 3780;
+            uint32_t colorUsed;             // count of palettes
+            uint32_t colorImportant;
+
+            /************************************************************
+            * @brief create InfoHeader
+            * @param[in] width the width of image
+            * @param[in] height the height of image
+            * @param[in] pixelSize the size of pixel data
+            * @param[in] color the count of color
+            ************************************************************/
+            InfoHeader(uint32_t width=0, uint32_t height=0, uint32_t pixelSize=0, uint16_t bits=24, uint32_t color=0):
+                width(width), 
+                height(height), 
+                bitCount(bits),
+                pixelSize(pixelSize),
+                colorUsed(color), 
+                colorImportant(color)
+            {}
+        };
+
+        struct FileHeader
+        {
+            uint8_t type[2] = {'B', 'M'};   // must be "BM"
+            uint32_t filesize;                  // file size
+            uint16_t reserved1 = 0;
+            uint16_t reserved2 = 0;
+            uint32_t offset;                // offset of pixel data, default sizeof(FileHeader) + sizeof(InfoHeader)
+
+            /************************************************************
+            * @brief create FileHeader
+            * @param[in] pixelSize the size of pixel data
+            * @param[in] offset the offset of pixel data
+            ************************************************************/
+            FileHeader(uint32_t pixelSize=0, uint32_t offset=sizeof(FileHeader) + sizeof(InfoHeader)):
+                filesize(offset + pixelSize), offset(offset)
+            {}
         };
 
         struct RGBPalette
@@ -1288,6 +1339,8 @@ namespace lolita
         };
 
         #pragma pack(pop)
+
+        constexpr static const uint32_t HeaderSize = sizeof(FileHeader) + sizeof(InfoHeader);
 
         namespace _BMP_private
         {
@@ -1335,7 +1388,7 @@ namespace lolita
             }
 
             /************************************************************
-            * @brief write a 24bit BMP image
+            * @brief write a 24 bits BMP image
             * @param[in] image the image matrix
             * @param[in] file the BMP file name
             * @return is success
@@ -1351,28 +1404,49 @@ namespace lolita
 
                 Mat<Pixel::BGR24> out = MatConvert::cast<Pixel::BGR24>(image);
 
-                FileHeader fileHeader;
-                fileHeader.type[0] = 'B';
-                fileHeader.type[1] = 'M';
-                fileHeader.offset = sizeof(FileHeader) + sizeof(InfoHeader);
-                fileHeader.size = fileHeader.offset + out.size();
-
-                InfoHeader infoHeader;
-                infoHeader.size = sizeof(InfoHeader);
-                infoHeader.width = out.width();
-                infoHeader.height = out.height();
-                infoHeader.planes = 1;
-                infoHeader.bitCount = 24;
-                infoHeader.compression = 0;
-                infoHeader.pixelSize = out.size();
-                infoHeader.xPixelPerMeter = 3780;
-                infoHeader.yPixelPerMeter = 3780;
-                infoHeader.colorUsed = 0;
-                infoHeader.colorImportant = 0;
+                FileHeader fileHeader(out.size());
+                InfoHeader infoHeader(out.width(), out.height(), out.size());
                 
                 fwrite(&fileHeader, sizeof(fileHeader), 1, fp);
                 fwrite(&infoHeader, sizeof(infoHeader), 1, fp);
                 fwrite(out.data(), out.size(), 1, fp);
+                fclose(fp);
+                return true;
+            }
+
+            /************************************************************
+            * @brief write a 16 bits BMP image (RGB1555)
+            * @param[in] image the image matrix
+            * @param[in] file the BMP file name
+            * @return is success
+            ************************************************************/
+            template<typename AnyPixel>
+            static inline bool write16(const Mat<AnyPixel>& image, const char* file)
+            {
+                FILE* fp = fopen(file, "wb");
+                if(fp == nullptr)
+                {
+                    return false;
+                }
+
+                Mat<Pixel::BGR24> out = MatConvert::cast<Pixel::BGR24>(image);
+
+                uint32_t rowSize = out.width() * 2;
+                uint32_t rowPadding = utils::padding(rowSize, 4);
+                rowSize = rowSize + rowPadding;
+                uint32_t pixelSize = rowSize * out.height();
+                FileHeader fileHeader(pixelSize);
+                InfoHeader infoHeader(out.width(), out.height(), pixelSize, 16);
+                
+                fwrite(&fileHeader, sizeof(fileHeader), 1, fp);
+                fwrite(&infoHeader, sizeof(infoHeader), 1, fp);
+                out.map([fp](Pixel::BGR24& pix){
+                    uint16_t color = 0;
+                    color |= static_cast<uint16_t>(pix.red()) >> 3 << 10;
+                    color |= static_cast<uint16_t>(pix.green()) >> 3 << 5;
+                    color |= static_cast<uint16_t>(pix.blue()) >> 3;
+                    fwrite(&color, 2, 1, fp);
+                });
                 fclose(fp);
                 return true;
             }
@@ -1436,24 +1510,9 @@ namespace lolita
 
                 image.setRowPadding(utils::padding(image.width(), 4));
 
-                FileHeader fileHeader;
-                fileHeader.type[0] = 'B';
-                fileHeader.type[1] = 'M';
-                fileHeader.offset = sizeof(FileHeader) + sizeof(InfoHeader) + sizeof(RGBPalette) * palettes.size();
-                fileHeader.size = fileHeader.offset + image.size();
-
-                InfoHeader infoHeader;
-                infoHeader.bitCount = 8;
-                infoHeader.colorUsed = palettes.size();
-                infoHeader.colorImportant = palettes.size();
-                infoHeader.size = sizeof(InfoHeader);
-                infoHeader.width = image.width();
-                infoHeader.height = image.height();
-                infoHeader.planes = 1;
-                infoHeader.compression = 0;
-                infoHeader.pixelSize = image.size();
-                infoHeader.xPixelPerMeter = 3780;
-                infoHeader.yPixelPerMeter = 3780;
+                uint32_t offset = sizeof(FileHeader) + sizeof(InfoHeader) + sizeof(RGBPalette) * palettes.size();
+                FileHeader fileHeader(image.size(), offset);
+                InfoHeader infoHeader(image.width(), image.height(), image.size(), 8, palettes.size());
 
                 fwrite(&fileHeader, sizeof(fileHeader), 1, fp);
                 fwrite(&infoHeader, sizeof(infoHeader), 1, fp);
@@ -1483,28 +1542,14 @@ namespace lolita
 
                 Mat<Pixel::Binary> out = MatConvert::cast<Pixel::Binary>(image);
                 
-                size_t rowSize = (out.width() + 7) / 8;
+                size_t rowSize = utils::ceil(image.width(), size_t(8));
                 size_t rowPadding = utils::padding(rowSize, 4);
                 rowSize = rowSize + rowPadding;
 
-                FileHeader fileHeader;
-                fileHeader.type[0] = 'B';
-                fileHeader.type[1] = 'M';
-                fileHeader.offset = sizeof(FileHeader) + sizeof(InfoHeader) + 2 * sizeof(RGBPalette);
-                fileHeader.size = fileHeader.offset + rowSize * out.height();
-
-                InfoHeader infoHeader;
-                infoHeader.size = sizeof(InfoHeader);
-                infoHeader.width = out.width();
-                infoHeader.height = out.height();
-                infoHeader.planes = 1;
-                infoHeader.bitCount = 1;
-                infoHeader.compression = 0;
-                infoHeader.pixelSize = out.size();
-                infoHeader.xPixelPerMeter = 3780;
-                infoHeader.yPixelPerMeter = 3780;
-                infoHeader.colorUsed = 2;
-                infoHeader.colorImportant = 2;
+                uint32_t offset = sizeof(FileHeader) + sizeof(InfoHeader) + 2 * sizeof(RGBPalette);
+                uint32_t pixelSize = rowSize * out.height();
+                FileHeader fileHeader(pixelSize, offset);
+                InfoHeader infoHeader(out.width(), out.height(), pixelSize, 1);
                 
                 fwrite(&fileHeader, sizeof(fileHeader), 1, fp);
                 fwrite(&infoHeader, sizeof(infoHeader), 1, fp);
@@ -1626,7 +1671,7 @@ namespace lolita
                 return _BMP_private::write24(image, file);
 
             case Format::Bit16:
-                return false;
+                return _BMP_private::write16(image, file);
 
             case Format::Palette:
                 return _BMP_private::writeWithPalette(image, file);
