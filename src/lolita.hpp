@@ -943,7 +943,7 @@ namespace lolita
         * @return is success
         ************************************************************/
         template<typename BinPixel, typename AnyPixel>
-        bool BINARY(BinPixel& out, const AnyPixel& in, uint8_t threshold=0x7f)
+        static inline bool BINARY(BinPixel& out, const AnyPixel& in, uint8_t threshold=0x7f)
         {
             // RGB(A)
             if(utils::eval<bool, ColorSpace::compatible(AnyPixel::id, "RGB")>::value)
@@ -977,7 +977,7 @@ namespace lolita
         * @return is success
         ************************************************************/
         template<typename GrayPixel, typename AnyPixel>
-        bool GRAY(GrayPixel& out, const AnyPixel& in)
+        static inline bool GRAY(GrayPixel& out, const AnyPixel& in)
         {
             // RGB(A)
             if(utils::eval<bool, ColorSpace::compatible(AnyPixel::id, "RGB")>::value)
@@ -1010,7 +1010,7 @@ namespace lolita
         * @return is success
         ************************************************************/
         template<typename RGBPixel, typename AnyPixel>
-        bool RGB(RGBPixel& out, const AnyPixel& in)
+        static inline bool RGB(RGBPixel& out, const AnyPixel& in)
         {
             // RGB(A)
             if(utils::eval<bool, ColorSpace::compatible(AnyPixel::id, "RGB")>::value)
@@ -1050,7 +1050,7 @@ namespace lolita
         * @return the reference to out
         ************************************************************/
         template<typename RGBAPixel, typename AnyPixel>
-        bool RGBA(RGBAPixel& out, const AnyPixel& in)
+        static inline bool RGBA(RGBAPixel& out, const AnyPixel& in)
         {
             // RGBA
             if(utils::eval<bool, ColorSpace::compatible(AnyPixel::id, "RGBA")>::value)
@@ -1106,7 +1106,7 @@ namespace lolita
         * @return is success
         ************************************************************/
         template<typename BinPixel, typename AnyPixel>
-        bool BINARY(Mat<BinPixel>& out, const Mat<AnyPixel> in, uint8_t threshold=0x7f, bool keepRowPadding=false)
+        static inline bool BINARY(Mat<BinPixel>& out, const Mat<AnyPixel> in, uint8_t threshold=0x7f, bool keepRowPadding=false)
         {
             if(keepRowPadding)
                 out.resize(in.width(), in.height(), in.rowPadding());
@@ -1134,7 +1134,7 @@ namespace lolita
         * @return is success
         ************************************************************/
         template<typename GrayPixel, typename AnyPixel>
-        bool GRAY(Mat<GrayPixel>& out, const Mat<AnyPixel> in, bool keepRowPadding=false)
+        static inline bool GRAY(Mat<GrayPixel>& out, const Mat<AnyPixel> in, bool keepRowPadding=false)
         {
             if(keepRowPadding)
                 out.resize(in.width(), in.height(), in.rowPadding());
@@ -1162,7 +1162,7 @@ namespace lolita
         * @return is success
         ************************************************************/
         template<typename RGBPixel, typename AnyPixel>
-        bool RGB(Mat<RGBPixel>& out, const Mat<AnyPixel> in, bool keepRowPadding=false)
+        static inline bool RGB(Mat<RGBPixel>& out, const Mat<AnyPixel> in, bool keepRowPadding=false)
         {
             if(keepRowPadding)
                 out.resize(in.width(), in.height(), in.rowPadding());
@@ -1190,7 +1190,7 @@ namespace lolita
         * @return is success
         ************************************************************/
         template<typename RGBPixel, typename AnyPixel>
-        bool RGBA(Mat<RGBPixel>& out, const Mat<AnyPixel> in, bool keepRowPadding=false)
+        static inline bool RGBA(Mat<RGBPixel>& out, const Mat<AnyPixel> in, bool keepRowPadding=false)
         {
             if(keepRowPadding)
                 out.resize(in.width(), in.height(), in.rowPadding());
@@ -1218,7 +1218,7 @@ namespace lolita
         ************************************************************/
         template<typename T, typename AnyPixel>
         const typename std::enable_if<!std::is_same<T, AnyPixel>::value, Mat<T>>::type
-        cast(const Mat<AnyPixel>& in, bool keepRowPadding=false)
+        static inline cast(const Mat<AnyPixel>& in, bool keepRowPadding=false)
         {   
             Mat<T> out;
             
@@ -1253,7 +1253,7 @@ namespace lolita
         ************************************************************/
         template<typename T, typename AnyPixel>
         const typename std::enable_if<std::is_same<T, AnyPixel>::value, Mat<T>>::type
-        cast(const Mat<AnyPixel>& in)
+        static inline cast(const Mat<AnyPixel>& in)
         {   
             return in;
         }
