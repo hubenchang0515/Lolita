@@ -1,23 +1,15 @@
 #include <iostream>
 #include <cstdio>
-#include <cassert>
+#include <stdexcept>
 #include <lolita.hpp>
 
 using namespace lolita;
 
-#define ASSERT(EXPR)                                                                                        \
-do                                                                                                          \
-{                                                                                                           \
-    if(EXPR)                                                                                                \
-    {                                                                                                       \
-        std::cout << "<test> " << __FILE__ << ":" << __LINE__  << " pass { " << #EXPR << " }" << std::endl; \
-    }                                                                                                       \
-    else                                                                                                    \
-    {                                                                                                       \
-        std::cout << "<test> "  << __FILE__ << ":" << __LINE__ << " fail { " << #EXPR << " }" << std::endl; \
-    }                                                                                                       \
-    assert(EXPR);                                                                                           \
-}while(0)
+#define TOSTR(X) #X
+#define STRING(X) TOSTR(X)
+#define POSITION __FILE__ ":" STRING(__LINE__)
+#define MASSERT(EXPR, MSG) do { if(!(EXPR)) throw std::runtime_error(MSG); } while(false)
+#define ASSERT(EXPR) MASSERT(EXPR, POSITION " failed: " #EXPR)
 
 void testColorSpace()
 {
@@ -79,9 +71,9 @@ void testPixel()
     p1.setBlue(15);
 
     Pixel::BGR24 p2;
-    PixelConvert::RGB(p2, p1);
+    ASSERT(PixelConvert::RGB(p2, p1));
     Pixel::GrayScale p3;
-    PixelConvert::GRAY(p3, p2);
+    ASSERT(PixelConvert::GRAY(p3, p2));
     ASSERT(p3.grayScale() == (95*299 + 05*587 + 15*114 + 500)/1000);
 }
 
@@ -114,47 +106,63 @@ void testBMP()
     ASSERT(sizeof(BMP::RGBPalette) == 4);
 
     Mat<Pixel::BGR24> source = BMP::read("input.bmp");
-    BMP::write(source, "16.bmp", BMP::Format::Bit16);
+    ASSERT(BMP::write(source, "16.bmp", BMP::Format::Bit16));
     Mat<Pixel::RGB24> out1;
     Mat<Pixel::BGR24> out2;
     Mat<Pixel::GRB24> out3;
     Mat<Pixel::GBR24> out4;
     Mat<Pixel::BRG24> out5;
     Mat<Pixel::GrayScale> out6;
-    MatConvert::RGB(out1, source, true);
-    MatConvert::RGB(out2, source, true);
-    MatConvert::RGB(out3, source, true);
-    MatConvert::RGB(out4, source, true);
-    MatConvert::RGB(out5, source, true);
-    MatConvert::GRAY(out6, source, true);
-    BMP::write(out1, "out1.bmp");
-    BMP::write(out2, "out2.bmp");
-    BMP::write(out3, "out3.bmp");
-    BMP::write(out4, "out4.bmp");
-    BMP::write(out5, "out5.bmp");
-    BMP::write(out6, "out6.bmp", BMP::Format::Palette);
+    ASSERT(MatConvert::RGB(out1, source, true));
+    ASSERT(MatConvert::RGB(out2, source, true));
+    ASSERT(MatConvert::RGB(out3, source, true));
+    ASSERT(MatConvert::RGB(out4, source, true));
+    ASSERT(MatConvert::RGB(out5, source, true));
+    ASSERT(MatConvert::GRAY(out6, source, true));
+    ASSERT(BMP::write(out1, "out1.bmp"));
+    ASSERT(BMP::write(out2, "out2.bmp"));
+    ASSERT(BMP::write(out3, "out3.bmp"));
+    ASSERT(BMP::write(out4, "out4.bmp"));
+    ASSERT(BMP::write(out5, "out5.bmp"));
+    ASSERT(BMP::write(out6, "out6.bmp", BMP::Format::Palette));
 
     Mat<Pixel::Binary> bin;
-    MatConvert::BINARY(bin, source, 200);
-    BMP::write(source, "bin0.bmp", BMP::Format::Binary, BMP::RGBPalette(0x9966ff), BMP::RGBPalette(0xffffff));
-    BMP::write(bin, "bin1.bmp", BMP::Format::Binary, BMP::RGBPalette(0x9966ff), BMP::RGBPalette(0xffffff));
+    ASSERT(MatConvert::BINARY(bin, source, 200));
+    ASSERT(BMP::write(source, "bin0.bmp", BMP::Format::Binary, BMP::RGBPalette(0x9966ff), BMP::RGBPalette(0xffffff)));
+    ASSERT(BMP::write(bin, "bin1.bmp", BMP::Format::Binary, BMP::RGBPalette(0x9966ff), BMP::RGBPalette(0xffffff)));
+}
 
-    Mat<Pixel::BGR24> color{301, 301};
-    color.map([](Pixel::BGR24& pix, size_t row, size_t col){
-        if((row < 150 && col < 150) || (row >= 150 && col >= 150))
-        {
-            pix.setRed(0xff);
-        }
-        else
-        {
-            pix.setGreen(0xff);
-        }
-    });
+void testDraw()
+{
+    Mat<Pixel::BGR24> color{200, 200};
+    Draw::Painter<Pixel::BGR24> painter(color);
+    ASSERT(painter.fill(Pixel::BGR24(0)));
 
-    BMP::write(color, "color24.bmp");
-    BMP::write(color, "color16.bmp", BMP::Format::Bit16);
-    BMP::write(color, "palette.bmp", BMP::Format::Palette);
-    BMP::write(color, "color2.bmp", BMP::Format::Binary);
+    ASSERT(painter.drawLine(Pixel::BGR24(0x00ff00), 0, 100, 200, 100));
+    ASSERT(painter.drawLine(Pixel::BGR24(0x00ff00), 100, 0, 100, 200));
+    ASSERT(painter.drawLine(Pixel::BGR24(0x00ff00), 0, 0, 200, 200));
+    ASSERT(painter.drawLine(Pixel::BGR24(0x00ff00), 0, 200, 200, 0));
+
+    ASSERT(painter.drawLine(Pixel::BGR24(0x0000ff), 0, 300, 300, 0));
+    ASSERT(painter.drawLine(Pixel::BGR24(0x0000ff), 0, 100, 200, 300));
+    ASSERT(painter.drawLine(Pixel::BGR24(0x0000ff), 0, 100, 100, 0));
+    ASSERT(painter.drawLine(Pixel::BGR24(0x0000ff), 100, 0, 300, 200));
+
+    ASSERT(painter.drawLine(Pixel::BGR24(0xff0000), 0, 0, 200, 400));
+    ASSERT(painter.drawLine(Pixel::BGR24(0xff0000), 0, 200, 100, 0));
+
+    ASSERT(painter.drawLine(Pixel::BGR24(0x00ffff), 0, 400, 200, 0));
+    ASSERT(painter.drawLine(Pixel::BGR24(0x00ffff), 100, 0, 300, 400));
+
+    ASSERT(painter.drawLine(Pixel::BGR24(0xffff00), 0, 200, 400, 0));
+    ASSERT(painter.drawLine(Pixel::BGR24(0xffff00), 0, 100, 400, 300));
+
+    ASSERT(painter.drawLine(Pixel::BGR24(0xff00ff), 0, 0, 400, 200));
+    ASSERT(painter.drawLine(Pixel::BGR24(0xff00ff), 0, 100, 200, 0));
+
+    ASSERT(BMP::write(color, "color24.bmp"));
+    ASSERT(BMP::write(color, "color16.bmp", BMP::Format::Bit16));
+    ASSERT(BMP::write(color, "palette.bmp", BMP::Format::Palette));
 }
 
 int main()
@@ -164,6 +172,8 @@ int main()
     testUtils();
     testMat();
     testBMP();
+    testDraw();
 
+    printf("SUCCESS\n");
     return 0;
 }

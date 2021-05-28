@@ -66,7 +66,7 @@ namespace lolita
         }
 
         /************************************************************
-        * @brief let n.4 -> n and n.5 -> n+! 
+        * @brief let n.4 -> n and n.5 -> n+1
         * @param[in] x the dividend
         * @param[in] y the divisor
         * @return the padding length
@@ -78,6 +78,17 @@ namespace lolita
             return (y > (x % y * 2)) ? (x / y) : (x / y + 1);
         }
 
+        /************************************************************
+        * @brief get the absolute difference of two value
+        * @param[in] x a value
+        * @param[in] y another value
+        * @return the difference
+        ************************************************************/
+        template<typename T>
+        constexpr static inline T diff(T x, T y)
+        {
+            return x > y ? x - y : y - x;
+        }
     }; // ::lolita::utils
 
     namespace _private
@@ -253,6 +264,9 @@ namespace lolita
             BasicPixel(const BasicPixel&) = default;
             BasicPixel(BasicPixel&&) = default;
 
+            BasicPixel& operator = (const BasicPixel&) = default;
+            BasicPixel& operator = (BasicPixel&&) = default;
+
             /************************************************************
             * @brief init the RGBA pixel by uint64_t value
             * @param[in] n the uint64_t value
@@ -261,7 +275,7 @@ namespace lolita
             {
                 for(size_t i = 0; i < BasicPixel::length; i++)
                 {
-                    m_data[i] = (n >> (BasicPixel::length - i - 1)) & 0xff;
+                    m_data[i] = (n >> (8 * (BasicPixel::length - i - 1))) & 0xff;
                 }
             }
 
@@ -277,6 +291,19 @@ namespace lolita
                     n = (n << 8) | m_data[i];
                 }
                 return n;
+            }
+
+            /************************************************************
+            * @brief static cast from uint64_t
+            * @return this pixel
+            ************************************************************/
+            BasicPixel& operator = (uint64_t n)
+            {
+                for(size_t i = 0; i < BasicPixel::length; i++)
+                {
+                    m_data[i] = (n >> (BasicPixel::length - i - 1)) & 0xff;
+                }
+                return *this;
             }
 
             /************************************************************
@@ -750,6 +777,74 @@ namespace lolita
         }
 
         /************************************************************
+        * @brief check if a index in the range
+        * @param[in] row the row index
+        * @param[in] col the col index
+        * @return is the index in the range
+        ************************************************************/
+        bool have(size_t row, size_t col)
+        {
+            return row < m_height && col < m_width;
+        }
+
+        /************************************************************
+        * @brief get a element
+        * @param[in] row the row index
+        * @param[in] col the col index
+        * @return the element
+        ************************************************************/
+        ElemType& at(size_t row, size_t col)
+        {
+            if(row >= m_height || col >= m_width)
+            {
+                static char message[256];
+                sprintf(message, "index <row:%zu, col:%zu> in matrix<height:%zu, width:%zu>", 
+                        row, col, m_height, m_width);
+                throw std::out_of_range(message);
+            }
+
+            return *((*this)[row][col]);
+        }
+
+        /************************************************************
+        * @brief get a element
+        * @param[in] row the row index
+        * @param[in] col the col index
+        * @return the element
+        ************************************************************/
+        const ElemType& at(size_t row, size_t col) const
+        {
+            if(row >= m_height || col >= m_width)
+            {
+                static char message[256];
+                sprintf(message, "index <row:%zu, col:%zu> in matrix<height:%zu, width:%zu>", 
+                        row, col, m_height, m_width);
+                throw std::out_of_range(message);
+            }
+
+            return *((*this)[row][col]);
+        }
+
+        /************************************************************
+        * @brief try to get a element, if the index is out of range
+        *       this function will return a nonexistent element 
+        *       which if invalid but safe
+        * @param[in] row the row index
+        * @param[in] col the col index
+        * @return the element
+        ************************************************************/
+        ElemType& get(size_t row, size_t col)
+        {
+            if(row >= m_height || col >= m_width)
+            {
+                static ElemType garbage;
+                return garbage;
+            }
+
+            return *((*this)[row][col]);
+        }
+
+        /************************************************************
         * @brief assign a matrix by deep copy
         * @param[in] another the matrix to be copied
         * @return the matrix assigned
@@ -786,6 +881,7 @@ namespace lolita
             m_width = another.m_width;
             m_height = another.m_height;
             another.m_data = nullptr;
+            return *this;
         }
 
         /************************************************************
@@ -1259,6 +1355,283 @@ namespace lolita
         }
     }; // namespace ::lolita::MatConvert
 
+    namespace Draw
+    {
+        template<typename T>
+        class Painter
+        {
+        public:
+            ~Painter() = default;
+            Painter(const Painter&) = default;
+            Painter(Painter&&) = default;
+
+            /************************************************************
+            * @brief create a invalid painter 
+            *       then you should invoke setTarget to set a matrix
+            *       which will be drawn
+            ************************************************************/
+            Painter():
+                m_target(nullptr)
+            {}
+
+            /************************************************************
+            * @brief create a painter with a target matrix which will be drawn
+            * @param[in] target the target matrix
+            ************************************************************/
+            Painter(Mat<T>& target):
+                m_target(&target)
+            {}
+
+            /************************************************************
+            * @brief get the current target matrix
+            ************************************************************/
+            Mat<T>* target() const
+            {
+                return m_target;
+            }
+
+            /************************************************************
+            * @brief set the target matrix which will be drawn
+            ************************************************************/
+            void setTarget(Mat<T>& target)
+            {
+                m_target = &target;
+            }
+
+            /************************************************************
+            * @brief draw a pixel
+            * @param[in] pix the color of other type element
+            * @param[in] row the y corrdination
+            * @param[in] col the x corrdination
+            * @return is success
+            ************************************************************/
+            bool drawPixel(const T& pix, size_t row, size_t col)
+            {
+                if(!m_target->valid() || !m_target->have(row, col))
+                {
+                    return false;
+                }
+
+                (*m_target)[row][col] = pix;
+                return true;
+            }
+
+            /************************************************************
+            * @brief fill the target matrix 
+            * @param[in] pix the color of other type element
+            * @return is success
+            ************************************************************/
+            bool fill(const T& pix)
+            {
+                if(!m_target->valid())
+                {
+                    return false;
+                }
+
+                for(size_t row = 0; row < m_target->height(); row++)
+                {
+                    for(size_t col = 0; col < m_target->width(); col++)
+                    {
+                        (*m_target)[row][col] = pix;
+                    }
+                }
+                return true;
+            }
+
+            /************************************************************
+            * @brief draw a line by Bresenham
+            * @param[in] x0 the first point x corrdination
+            * @param[in] y0 the first point y corrdination
+            * @param[in] x1 the second point x corrdination
+            * @param[in] y1 the second point y corrdination
+            * @return is success
+            ************************************************************/
+            bool drawLine(const T& pix, size_t x0, size_t y0, size_t x1, size_t y1)
+            {
+                if(!m_target->valid())
+                {
+                    return false;
+                }
+
+                if(x0 == x1)
+                {
+                    m_drawCol(pix, x0, y0, y1);
+                    return true;
+                }
+
+                if(y0 == y1)
+                {
+                    m_drawRow(pix, y0, x0, x1);
+                    return true;
+                }
+
+                size_t X = m_target->width() - 1;
+                size_t Y = m_target->height() - 1;
+                size_t xDiff = utils::diff(x0, x1);
+                size_t yDiff = utils::diff(y0, y1);
+
+                // the slope ('k' of 'y = kx + b')
+                bool goUp = y0 <= y1; // I'm foolish to use size_t
+                float step = static_cast<float>(yDiff) / xDiff;
+
+                // the end points are outside the matrix area
+                if(x0 < X && x1 > X)
+                {
+                    y1 = y0 + (X - x0) * (goUp ? step : -step);
+                    x1 = X;
+                }
+
+                if(x1 < X && x0 > X)
+                {
+                    y0 = y1 + (X - x1) * (goUp ? step : -step);
+                    x0 = X;
+                }
+
+                if(y0 < Y && y1 > Y)
+                {
+                    x1 = x0 + (Y - y0) / (goUp ? step : -step);
+                    y1 = Y;
+                }
+
+                if(y1 < Y && y0 > Y)
+                {
+                    x0 = x1 + (Y - y1) / (goUp ? step : -step);
+                    y0 = Y;
+                }
+
+                m_drawObliqueLine(pix, x0, y0, x1, y1);
+
+                return true;
+            }
+
+        private:
+            Mat<T>* m_target;
+
+            /************************************************************
+            * @brief draw a pixel without checking
+            * @param[in] pix the color of other type element
+            * @param[in] row the y corrdination
+            * @param[in] col the x corrdination
+            ************************************************************/
+            void m_drawPixel(const T& pix, size_t row, size_t col)
+            {
+                (*m_target)[row][col] = pix;
+            }
+
+            /************************************************************
+            * @brief draw a row line 
+            * @param[in] pix the element value
+            * @param[in] row the row
+            * @param[in] x0 start x corrdination
+            * @param[in] x1 end x corrdination
+            ************************************************************/
+            void m_drawRow(const T& pix, size_t row, size_t x0, size_t x1)
+            {
+                if(x0 > x1)
+                {
+                    std::swap(x0, x1);
+                }
+
+                size_t xMax = m_target->width();
+                for(size_t x = x0; x <= x1 && x < xMax; x++)
+                {
+                    (*m_target)[row][x] = pix;
+                }
+            }
+
+            /************************************************************
+            * @brief draw a column line 
+            * @param[in] pix the element value
+            * @param[in] col the column
+            * @param[in] y0 start y corrdination
+            * @param[in] y1 end y corrdination
+            ************************************************************/
+            void m_drawCol(const T& pix, size_t col, size_t y0, size_t y1)
+            {
+                if(y0 > y1)
+                {
+                    std::swap(y0, y1);
+                }
+
+                size_t yMax = m_target->height();
+                for(size_t y = y0; y <= y1 && y < yMax; y++)
+                {
+                    (*m_target)[y][col] = pix;
+                }
+            }
+
+            /************************************************************
+            * @brief draw a oblique line
+            *       (x0, y0) and (x1, y1) must in the matrix area 
+            * @param[in] pix the element value
+            * @param[in] x0 the start x corrdination
+            * @param[in] x1 the end x corrdination
+            * @param[in] y0 the start y corrdination
+            * @param[in] step the changeof y between x add x+1
+            * @param[in] postive the sign of step
+            ************************************************************/
+            void m_drawObliqueLine(const T& pix, size_t x0, size_t y0, size_t x1, size_t y1)
+            {
+                // for avoiding gaps, must have to draw along the longer corrdination 
+                size_t xDiff = utils::diff(x0, x1);
+                size_t yDiff = utils::diff(y0, y1);
+
+                if(xDiff >= yDiff)
+                {
+                    // drawing along the row
+                    if(x0 > x1)
+                    {
+                        std::swap(x0, x1);
+                        std::swap(y0, y1);
+                    }
+
+                    bool goUp = y0 <= y1;
+                    float step = static_cast<float>(yDiff) / xDiff;
+
+                    float err = 0.0f;
+                    size_t y = y0;
+                    for(size_t x = x0; x <= x1; x++)
+                    {
+                        m_drawPixel(pix, y, x);
+
+                        err += step;
+                        if(err >= 0.5)
+                        {
+                            y = goUp ? y + 1U : y - 1U;
+                            err -= 1.0f;
+                        }
+                    }
+                }
+                else
+                {
+                    // drawing along the column
+                    if(y0 > y1)
+                    {
+                        std::swap(x0, x1);
+                        std::swap(y0, y1);
+                    }
+
+                    bool goUp = x0 <= x1;
+                    float step = static_cast<float>(xDiff) / yDiff;
+                    float err = 0.0f;
+                    size_t x = x0;
+                    for(size_t y = y0; y <= y1; y++)
+                    {
+                        m_drawPixel(pix, y, x);
+
+                        err += step;
+                        if(err >= 0.5)
+                        {
+                            x = goUp ? x + 1U : x - 1U;
+                            err -= 1.0f;
+                        }
+                    }
+                }
+
+            }
+        };
+    }
+
     namespace BMP
     {
         enum class Format : int
@@ -1390,6 +1763,40 @@ namespace lolita
             }
 
             /************************************************************
+            * @brief read a 16bit BMP image 
+            *       the format is big-endian XRGB1555
+            *       like GGGBBBBB XRRRRRGG
+            * @param[out] image image matrix
+            * @param[in] fp FILE pointer to a BPM image
+            * @param[in] width the width of image
+            * @param[in] height the height of image
+            * @return is success
+            ************************************************************/
+            static inline bool read16(Mat<Pixel::BGR24>& image, FILE* fp, uint32_t offset, uint32_t width, uint32_t height)
+            {
+                if(fp == nullptr || fseek(fp, offset, SEEK_SET) != 0)
+                {
+                    return false;
+                }
+
+                size_t rowPadding = utils::padding(2 * width, 4);
+                image.resize(width, height);
+                for(size_t row = 0; row < height; row++)
+                {
+                    for(size_t col = 0; col < width; col++)
+                    {
+                        uint16_t color;
+                        fread(&color, 2, 1, fp);
+                        image[row][col].setRed((color >> 7) & 0xf1);
+                        image[row][col].setGreen((color >> 2) & 0xf1 );
+                        image[row][col].setBlue(color << 3);
+                    }
+                    fseek(fp, rowPadding, SEEK_CUR);
+                }
+                return true;
+            }
+
+            /************************************************************
             * @brief write a 24 bits BMP image
             * @param[in] image the image matrix
             * @param[in] file the BMP file name
@@ -1418,7 +1825,9 @@ namespace lolita
             }
 
             /************************************************************
-            * @brief write a 16 bits BMP image (RGB1555)
+            * @brief write a 16 bits BMP image
+            *       the format is big-endian XRGB1555
+            *       like GGGBBBBB XRRRRRGG
             * @param[in] image the image matrix
             * @param[in] file the BMP file name
             * @return is success
@@ -1433,7 +1842,6 @@ namespace lolita
                 }
 
                 Mat<Pixel::BGR24> out = MatConvert::cast<Pixel::BGR24>(image);
-
                 uint32_t rowSize = out.width() * 2;
                 uint32_t rowPadding = utils::padding(rowSize, 4);
                 rowSize = rowSize + rowPadding;
@@ -1445,11 +1853,10 @@ namespace lolita
                 fwrite(&infoHeader, sizeof(infoHeader), 1, fp);
                 out.map([fp, rowPadding, &out](Pixel::BGR24& pix, size_t row, size_t col){
                     (void)(row);
-                    uint16_t color = 0;
-                    color |= static_cast<uint16_t>(pix.red()) >> 3 << 10;
-                    color |= static_cast<uint16_t>(pix.green()) >> 3 << 5;
-                    color |= static_cast<uint16_t>(pix.blue()) >> 3;
-                    fwrite(&color, 2, 1, fp);
+                    uint8_t color[2];
+                    color[0] = 0 | ((pix.green() & 0xf8) << 2) | (pix.blue() >> 3);
+                    color[1] = 0 | ((pix.red() & 0xf8) >> 1) | (pix.green() >> 6);
+                    fwrite(&color, 1, 2, fp);
                     
                     if(col == out.width() - 1)
                     {
@@ -1640,6 +2047,7 @@ namespace lolita
                 break;
 
             case 16:
+                _BMP_private::read16(image, fp, fileHeader.offset, infoHeader.width, infoHeader.height);
                 break;
 
             case 8:
