@@ -1694,21 +1694,21 @@ namespace lolita
             {}
         };
 
-        struct RGBPalette
+        struct BGRPalette
         {
             uint8_t blue;
             uint8_t green;
             uint8_t red;
             uint8_t reserved;
 
-            RGBPalette(uint8_t r, uint8_t g, uint8_t b):
+            BGRPalette(uint8_t b, uint8_t g, uint8_t r):
                 blue(b), green(g), red(r), reserved(0)
             {}
 
-            RGBPalette(uint64_t rgb = 0):
-                blue(rgb & 0xff), 
-                green((rgb >> 8) & 0xff), 
-                red((rgb >> 16) & 0xff), 
+            BGRPalette(uint64_t bgr = 0):
+                blue((bgr >> 16) & 0xff), 
+                green((bgr >> 8) & 0xff), 
+                red(bgr & 0xff), 
                 reserved(0)
             {}
         };
@@ -1746,7 +1746,8 @@ namespace lolita
             /************************************************************
             * @brief read a 24bit BMP image
             * @param[out] image image matrix
-            * @param[in] fp FILE pointer to a BPM image
+            * @param[in] fp FILE pointer to a BMP image
+            * @param[in] offset offset of pixel data
             * @param[in] width the width of image
             * @param[in] height the height of image
             * @return is success
@@ -1767,7 +1768,8 @@ namespace lolita
             *       the format is big-endian XRGB1555
             *       like GGGBBBBB XRRRRRGG
             * @param[out] image image matrix
-            * @param[in] fp FILE pointer to a BPM image
+            * @param[in] fp FILE pointer to a BMP image
+            * @param[in] offset offset of pixel data
             * @param[in] width the width of image
             * @param[in] height the height of image
             * @return is success
@@ -1793,6 +1795,77 @@ namespace lolita
                     }
                     fseek(fp, rowPadding, SEEK_CUR);
                 }
+                return true;
+            }
+
+            /************************************************************
+            * @brief read the palette in a BMP image 
+            * @param[out] palettes the palettes
+            * @param[in] fp FILE pointer to a BMP image
+            * @param[in] offset the offset of palettes
+            * @param[in] colors count color used
+            ************************************************************/
+            static inline bool readPalette(std::vector<Pixel::BGR24>& palettes, FILE* fp, uint32_t offset, uint32_t colors)
+            {
+                palettes.clear();
+                fseek(fp, offset, SEEK_SET);
+                Pixel::BGR24 palette;
+                for(uint32_t i = 0; i < colors; i++)
+                {
+                    fread(&palette, sizeof(palette), 1, fp);
+                    palettes.emplace_back(palette);
+                }
+
+                return true;
+            }
+
+            /************************************************************
+            * @brief read a BMP image with palette, very slow
+            * @param[out] image image matrix
+            * @param[in] fp FILE pointer to a BMP image
+            * @param[in] colorUsed count of used color
+            * @param[in] offset offset of pixel data
+            * @param[in] width the width of image
+            * @param[in] height the height of image
+            * @return is success
+            ************************************************************/
+            template<uint16_t bits>
+            typename std::enable_if<bits == 8 || bits == 4 || bits == 1, bool>::type
+            static inline readWithPalette(Mat<Pixel::BGR24>& image, FILE* fp, uint32_t offset, uint32_t width, uint32_t height)
+            {
+                uint32_t palettesOffset = sizeof(BMP::FileHeader) + sizeof(BMP::InfoHeader);
+                image.resize(width, height);
+                size_t rowSize = utils::ceil(size_t(width*bits), size_t(8));
+                size_t padding = utils::padding(rowSize, size_t(4));
+                rowSize += padding;
+
+                for(uint32_t row = 0; row < height; row++)
+                {
+                    constexpr const uint32_t step = utils::eval<size_t, 8/bits>::value;
+                    for(uint32_t col1 = 0; col1 < width; col1+=step)
+                    {
+                        uint8_t indexSet = 0;
+                        fseek(fp, offset + row*rowSize + col1/step, SEEK_SET);
+                        fread(&indexSet, 1, 1, fp);
+                        
+                        uint8_t mask = utils::eval<uint8_t, bits == 8 ? 0xff : bits == 4 ? 0xf0 : 0x80>::value;
+                        uint8_t shift = utils::eval<uint8_t, 8 - bits>::value;
+
+                        for(uint32_t col2 = 0; col2 < step && col1 + col2 < width; col2++)
+                        {
+                            uint8_t index = (indexSet & mask) >> shift;
+                            BGRPalette color;
+                            fseek(fp, palettesOffset + index*sizeof(color), SEEK_SET);
+                            fread(&color, sizeof(color), 1, fp);
+                            image[row][col1+col2].setRed(color.red);
+                            image[row][col1+col2].setGreen(color.green);
+                            image[row][col1+col2].setBlue(color.blue);
+                            mask >>= bits;
+                            shift -= bits;
+                        }
+                    }
+                }   
+
                 return true;
             }
 
@@ -1877,9 +1950,10 @@ namespace lolita
             * @return is success
             ************************************************************/
             template<typename RGBPixel>
-            static inline bool generatePalette(const Mat<RGBPixel>& image, Mat<uint8_t>& out, std::vector<RGBPalette>& palettes, size_t max=256)
+            static inline bool generatePalette(const Mat<RGBPixel>& image, Mat<uint8_t>& out, std::vector<BGRPalette>& palettes, size_t max=256)
             {
                 out.resize(image.width(), image.height());
+                palettes.clear();
                 std::map<uint64_t, size_t> cache;
 
                 for(size_t row = 0; row < image.height(); row++)
@@ -1919,7 +1993,7 @@ namespace lolita
             ************************************************************/
             template<size_t bits> 
             typename std::enable_if<bits == 8 || bits == 4 || bits == 1, bool>::type
-            static inline writeWithPalette(Mat<uint8_t>& index, const std::vector<RGBPalette>& palettes, const char* file)
+            static inline writeWithPalette(Mat<uint8_t>& index, const std::vector<BGRPalette>& palettes, const char* file)
             {
                 FILE* fp = fopen(file, "wb");
                 if(fp == nullptr)
@@ -1932,13 +2006,13 @@ namespace lolita
                 rowSize = rowSize + rowPadding;
                 size_t pixelSize = rowSize * index.height();
 
-                uint32_t offset = sizeof(FileHeader) + sizeof(InfoHeader) + sizeof(RGBPalette) * palettes.size();
+                uint32_t offset = sizeof(FileHeader) + sizeof(InfoHeader) + sizeof(BGRPalette) * palettes.size();
                 FileHeader fileHeader(pixelSize, offset);
                 InfoHeader infoHeader(index.width(), index.height(), pixelSize, bits, palettes.size());
 
                 fwrite(&fileHeader, sizeof(fileHeader), 1, fp);
                 fwrite(&infoHeader, sizeof(infoHeader), 1, fp);
-                fwrite(palettes.data(), sizeof(RGBPalette) * palettes.size(), 1, fp);
+                fwrite(palettes.data(), sizeof(BGRPalette) * palettes.size(), 1, fp);
 
                 if(utils::eval<bool, bits == 8>::value)
                 {
@@ -1977,11 +2051,11 @@ namespace lolita
             ************************************************************/
             template<typename AnyPixel>
             static inline bool writeBinary(const Mat<AnyPixel>& image, const char* file, 
-                                            RGBPalette binary0 = 0, RGBPalette binary1 = 0xffffff)
+                                            BGRPalette binary0 = 0, BGRPalette binary1 = 0xffffff)
             {
                 Mat<Pixel::Binary> bin = MatConvert::cast<Pixel::Binary>(image);
                 Mat<uint8_t> index(bin.width(), bin.height());
-                std::vector<RGBPalette> palettes = {binary0, binary1};
+                std::vector<BGRPalette> palettes = {binary0, binary1};
                 bin.map([&index](Pixel::Binary& pix, size_t row, size_t col){
                     index[row][col] = pix.binary() ? 1 : 0;
                 });
@@ -1999,7 +2073,7 @@ namespace lolita
             {
                 Mat<Pixel::BGR24> BGR = MatConvert::cast<Pixel::BGR24>(image);
                 Mat<uint8_t> index; 
-                std::vector<RGBPalette> palettes;
+                std::vector<BGRPalette> palettes;
                 if(!generatePalette(BGR, index, palettes))
                 {
                     return false;
@@ -2017,6 +2091,7 @@ namespace lolita
 
         /************************************************************
         * @brief read a BMP image
+        *        NOTE: read palettes images is very slow
         * @param[in] fp FILE pointer to a BPM image
         * @param[in] width the width of image
         * @param[in] height the height of image
@@ -2051,12 +2126,15 @@ namespace lolita
                 break;
 
             case 8:
+                _BMP_private::readWithPalette<8>(image, fp, fileHeader.offset, infoHeader.width, infoHeader.height);
                 break;
 
             case 4:
+                _BMP_private::readWithPalette<4>(image, fp, fileHeader.offset, infoHeader.width, infoHeader.height);
                 break;
 
             case 1:
+                _BMP_private::readWithPalette<1>(image, fp, fileHeader.offset, infoHeader.width, infoHeader.height);
                 break;
             }
 
@@ -2075,7 +2153,7 @@ namespace lolita
         ************************************************************/
         template<typename AnyPixel>
         static inline bool write(const Mat<AnyPixel>& image, const char* file, Format format=Format::Bit24, 
-                                    RGBPalette binary0 = 0, RGBPalette binary1 = 0xffffff)
+                                    BGRPalette binary0 = 0, BGRPalette binary1 = 0xffffff)
         {
             if(!image.valid() || file == nullptr)
             {

@@ -97,13 +97,28 @@ void testMat()
 
     Mat<Pixel::BGR24> image3(1857, 1393, utils::padding(1857 * sizeof(Pixel::BGR24), 4));
     ASSERT(image3.size() == (3 * 1857 + 1) * 1393);
+
+    Mat<uint8_t> mat;
+    ASSERT(!mat.valid());
+
+    mat.resize(0,1);
+    ASSERT(!mat.valid());
+
+    mat.resize(1,0);
+    ASSERT(!mat.valid());
+
+    mat.resize(1,1);
+    ASSERT(mat.valid());
+
+    mat.resize(0,1);
+    ASSERT(!mat.valid());
 }
 
 void testBMP()
 {
     ASSERT(sizeof(BMP::FileHeader) == 14);
     ASSERT(sizeof(BMP::InfoHeader) == 40);
-    ASSERT(sizeof(BMP::RGBPalette) == 4);
+    ASSERT(sizeof(BMP::BGRPalette) == 4);
 
     Mat<Pixel::BGR24> source = BMP::read("input.bmp");
     ASSERT(BMP::write(source, "16.bmp", BMP::Format::Bit16));
@@ -128,8 +143,8 @@ void testBMP()
 
     Mat<Pixel::Binary> bin;
     ASSERT(MatConvert::BINARY(bin, source, 200));
-    ASSERT(BMP::write(source, "bin0.bmp", BMP::Format::Binary, BMP::RGBPalette(0x9966ff), BMP::RGBPalette(0xffffff)));
-    ASSERT(BMP::write(bin, "bin1.bmp", BMP::Format::Binary, BMP::RGBPalette(0x9966ff), BMP::RGBPalette(0xffffff)));
+    ASSERT(BMP::write(source, "bin0.bmp", BMP::Format::Binary, BMP::BGRPalette(0x9966ff), BMP::BGRPalette(0xffffff)));
+    ASSERT(BMP::write(bin, "bin1.bmp", BMP::Format::Binary, BMP::BGRPalette(0x9966ff), BMP::BGRPalette(0xffffff)));
 }
 
 void testDraw()
@@ -165,6 +180,15 @@ void testDraw()
     ASSERT(BMP::write(color, "palette.bmp", BMP::Format::Palette));
 }
 
+void testPalette()
+{
+    Mat<Pixel::BGR24> read8 = BMP::read("out6.bmp");
+    ASSERT(BMP::write(read8, "read8.bmp"));
+
+    Mat<Pixel::BGR24> read4 = BMP::read("palette.bmp");
+    ASSERT(BMP::write(read4, "read4.bmp"));
+}
+
 int main()
 {
     testColorSpace();
@@ -173,6 +197,7 @@ int main()
     testMat();
     testBMP();
     testDraw();
+    testPalette();
 
     printf("SUCCESS\n");
     return 0;
