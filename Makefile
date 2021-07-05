@@ -1,4 +1,4 @@
-.PHONY: all help test clean install uninstall
+.PHONY: help install uninstall test
 
 help: 
 	@echo "Lolita is a header-only libraray, needn't build."
@@ -8,16 +8,14 @@ help:
 	@echo "  make test - run the unit test"
 	@echo "  make clean - clean the test build files"
 
-all: test
-
-test:
-	$(MAKE) -C ./test
-
-clean:
-	$(MAKE) -C ./test clean
-
 install:
 	install -m0644 ./src/lolita.hpp /usr/local/include
 
 uninstall:
 	rm -f /usr/local/include/lolita.hpp
+
+test:
+	$(MAKE) -C ./test test
+
+%:
+	$(MAKE) -C ./test $@
