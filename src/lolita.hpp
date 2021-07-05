@@ -1853,11 +1853,15 @@ namespace lolita
             typename std::enable_if<bits == 8 || bits == 4 || bits == 1, bool>::type
             static inline readWithPalette(Mat<Pixel::BGR24>& image, FILE* fp, uint32_t offset, uint32_t width, uint32_t height, uint32_t colorUsed)
             {
-                if(colorUsed == 0)
+                if(colorUsed == 0 || colorUsed > (1 << bits))
                 {
                     colorUsed = 1 << bits;
                 }
                 BGRPalette* palettes = static_cast<BGRPalette*>( malloc(colorUsed * sizeof(BGRPalette)));
+                if(palettes == nullptr)
+                {
+                    throw std::bad_alloc(); 
+                }
                 constexpr const uint32_t palettesOffset = sizeof(BMP::FileHeader) + sizeof(BMP::InfoHeader);
                 fseek(fp, palettesOffset, SEEK_SET);
                 fread(palettes, colorUsed * sizeof(BGRPalette), 1, fp);
@@ -1867,6 +1871,11 @@ namespace lolita
                 size_t padding = utils::padding(rowSize, size_t(4));
                 rowSize += padding;
                 uint8_t* indexMat = static_cast<uint8_t*>(malloc(rowSize * width));
+                if(indexMat == nullptr)
+                {
+                    free(palettes);
+                    throw std::bad_alloc();
+                }
                 fseek(fp, offset, SEEK_SET);
                 fread(indexMat, rowSize * width, 1, fp);
 
