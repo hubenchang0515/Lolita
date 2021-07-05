@@ -307,6 +307,26 @@ namespace lolita
             }
 
             /************************************************************
+            * @brief get a byte data
+            * @param[in] index index of byte, range [0, 7]
+            * @return the data value
+            ************************************************************/
+            uint8_t get(size_t index)
+            {
+                return m_data[index];
+            }
+
+            /************************************************************
+            * @brief set a byte data
+            * @param[in] index index of byte, range [0, 7]
+            * @param[in] value the data value
+            ************************************************************/
+            void set(size_t index, uint8_t value)
+            {
+                m_data[index] = value;
+            }
+
+            /************************************************************
             * @brief get the binary value
             * @return the binary value
             ************************************************************/
