@@ -149,7 +149,7 @@ void testBMP()
 
 void testDraw()
 {
-    Mat<Pixel::BGR24> color{200, 200};
+    Mat<Pixel::BGR24> color{201, 201};
     Draw::Painter<Pixel::BGR24> painter(color);
     ASSERT(painter.fill(Pixel::BGR24(0)));
 

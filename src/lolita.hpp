@@ -1823,30 +1823,39 @@ namespace lolita
             * @brief read a BMP image with palette, very slow
             * @param[out] image image matrix
             * @param[in] fp FILE pointer to a BMP image
-            * @param[in] colorUsed count of used color
             * @param[in] offset offset of pixel data
             * @param[in] width the width of image
             * @param[in] height the height of image
+            * @param[in] colorUsed count of used color
             * @return is success
             ************************************************************/
             template<uint16_t bits>
             typename std::enable_if<bits == 8 || bits == 4 || bits == 1, bool>::type
-            static inline readWithPalette(Mat<Pixel::BGR24>& image, FILE* fp, uint32_t offset, uint32_t width, uint32_t height)
+            static inline readWithPalette(Mat<Pixel::BGR24>& image, FILE* fp, uint32_t offset, uint32_t width, uint32_t height, uint32_t colorUsed)
             {
-                uint32_t palettesOffset = sizeof(BMP::FileHeader) + sizeof(BMP::InfoHeader);
+                if(colorUsed == 0)
+                {
+                    colorUsed = 1 << bits;
+                }
+                BGRPalette* palettes = static_cast<BGRPalette*>( malloc(colorUsed * sizeof(BGRPalette)));
+                constexpr const uint32_t palettesOffset = sizeof(BMP::FileHeader) + sizeof(BMP::InfoHeader);
+                fseek(fp, palettesOffset, SEEK_SET);
+                fread(palettes, colorUsed * sizeof(BGRPalette), 1, fp);
+
                 image.resize(width, height);
                 size_t rowSize = utils::ceil(size_t(width*bits), size_t(8));
                 size_t padding = utils::padding(rowSize, size_t(4));
                 rowSize += padding;
+                uint8_t* indexMat = static_cast<uint8_t*>(malloc(rowSize * width));
+                fseek(fp, offset, SEEK_SET);
+                fread(indexMat, rowSize * width, 1, fp);
 
                 for(uint32_t row = 0; row < height; row++)
                 {
                     constexpr const uint32_t step = utils::eval<size_t, 8/bits>::value;
                     for(uint32_t col1 = 0; col1 < width; col1+=step)
                     {
-                        uint8_t indexSet = 0;
-                        fseek(fp, offset + row*rowSize + col1/step, SEEK_SET);
-                        fread(&indexSet, 1, 1, fp);
+                        uint8_t indexSet = indexMat[row*rowSize + col1/step];
                         
                         uint8_t mask = utils::eval<uint8_t, bits == 8 ? 0xff : bits == 4 ? 0xf0 : 0x80>::value;
                         uint8_t shift = utils::eval<uint8_t, 8 - bits>::value;
@@ -1854,9 +1863,7 @@ namespace lolita
                         for(uint32_t col2 = 0; col2 < step && col1 + col2 < width; col2++)
                         {
                             uint8_t index = (indexSet & mask) >> shift;
-                            BGRPalette color;
-                            fseek(fp, palettesOffset + index*sizeof(color), SEEK_SET);
-                            fread(&color, sizeof(color), 1, fp);
+                            BGRPalette color = palettes[index];
                             image[row][col1+col2].setRed(color.red);
                             image[row][col1+col2].setGreen(color.green);
                             image[row][col1+col2].setBlue(color.blue);
@@ -1866,6 +1873,8 @@ namespace lolita
                     }
                 }   
 
+                free(indexMat);
+                free(palettes);
                 return true;
             }
 
@@ -2126,15 +2135,15 @@ namespace lolita
                 break;
 
             case 8:
-                _BMP_private::readWithPalette<8>(image, fp, fileHeader.offset, infoHeader.width, infoHeader.height);
+                _BMP_private::readWithPalette<8>(image, fp, fileHeader.offset, infoHeader.width, infoHeader.height, infoHeader.colorUsed);
                 break;
 
             case 4:
-                _BMP_private::readWithPalette<4>(image, fp, fileHeader.offset, infoHeader.width, infoHeader.height);
+                _BMP_private::readWithPalette<4>(image, fp, fileHeader.offset, infoHeader.width, infoHeader.height, infoHeader.colorUsed);
                 break;
 
             case 1:
-                _BMP_private::readWithPalette<1>(image, fp, fileHeader.offset, infoHeader.width, infoHeader.height);
+                _BMP_private::readWithPalette<1>(image, fp, fileHeader.offset, infoHeader.width, infoHeader.height, infoHeader.colorUsed);
                 break;
             }
 
