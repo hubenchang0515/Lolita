@@ -1808,7 +1808,10 @@ namespace lolita
                     for(size_t col = 0; col < width; col++)
                     {
                         uint16_t color;
-                        fread(&color, 2, 1, fp);
+                        if(fread(&color, 2, 1, fp) <= 0)
+                        {
+                            return false;
+                        }
                         image[row][col].setRed((color >> 7) & 0xf1);
                         image[row][col].setGreen((color >> 2) & 0xf1 );
                         image[row][col].setBlue(color << 3);
@@ -1832,7 +1835,10 @@ namespace lolita
                 Pixel::BGR24 palette;
                 for(uint32_t i = 0; i < colors; i++)
                 {
-                    fread(&palette, sizeof(palette), 1, fp);
+                    if(fread(&palette, sizeof(palette), 1, fp) <= 0)
+                    {
+                        return false;
+                    }
                     palettes.emplace_back(palette);
                 }
 
@@ -1863,8 +1869,11 @@ namespace lolita
                     throw std::bad_alloc(); 
                 }
                 constexpr const uint32_t palettesOffset = sizeof(BMP::FileHeader) + sizeof(BMP::InfoHeader);
-                fseek(fp, palettesOffset, SEEK_SET);
-                fread(palettes, colorUsed * sizeof(BGRPalette), 1, fp);
+                
+                if(fseek(fp, palettesOffset, SEEK_SET) != 0 || fread(palettes, colorUsed * sizeof(BGRPalette), 1, fp) <= 0)
+                {
+                    return false;
+                }
 
                 image.resize(width, height);
                 size_t rowSize = utils::ceil(size_t(width*bits), size_t(8));
@@ -1876,8 +1885,11 @@ namespace lolita
                     free(palettes);
                     throw std::bad_alloc();
                 }
-                fseek(fp, offset, SEEK_SET);
-                fread(indexMat, rowSize * width, 1, fp);
+                
+                if(fseek(fp, offset, SEEK_SET) != 0 || fread(indexMat, rowSize * width, 1, fp) <= 0)
+                {
+                    return false;
+                }
 
                 for(uint32_t row = 0; row < height; row++)
                 {
